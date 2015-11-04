@@ -37,6 +37,7 @@ enabled=1
 gpgcheck=0
 """
 
+
 class ScyllaArtifactSanity(Test):
 
     """
@@ -54,7 +55,8 @@ class ScyllaArtifactSanity(Test):
 
     def download_fedora_22_pkgs(self):
         x86_url = os.path.join(self.base_url, 'rpm', 'fedora', '22', 'x86_64')
-        noarch_url = os.path.join(self.base_url, 'rpm', 'fedora', '22', 'noarch')
+        noarch_url = os.path.join(self.base_url, 'rpm', 'fedora', '22',
+                                  'noarch')
         scylla_server = 'scylla-server-0.11-20151102.f849c4b.fc22.x86_64.rpm'
         scylla_jmx = 'scylla-jmx-0.11-20151102.36ed2cf.fc22.noarch.rpm'
         scylla_tools = 'scylla-tools-0.11-20151102.ff63598.fc22.noarch.rpm'
@@ -159,4 +161,3 @@ class ScyllaArtifactSanity(Test):
 
 if __name__ == '__main__':
     main()
-
