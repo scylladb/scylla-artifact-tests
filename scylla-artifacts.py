@@ -11,6 +11,31 @@ from avocado.utils import path
 from avocado.utils import download
 from avocado.utils import service
 
+CENTOS_REPOS = """
+[scylla]
+name=Scylla for Centos $releasever - $basearch
+baseurl=https://s3.amazonaws.com/downloads.scylladb.com/rpm/centos/$releasever/$basearch/
+enabled=1
+gpgcheck=0
+
+[scylla-generic]
+name=Scylla for centos $releasever
+baseurl=https://s3.amazonaws.com/downloads.scylladb.com/rpm/centos/$releasever/noarch/
+enabled=1
+gpgcheck=0
+
+[scylla-3rdparty]
+name=Scylla 3rdParty for Centos $releasever - $basearch
+baseurl=https://s3.amazonaws.com/downloads.scylladb.com/rpm/3rdparty/centos/$releasever/$basearch/
+enabled=1
+gpgcheck=0
+
+[scylla-3rdparty-generic]
+name=Scylla 3rdParty for Centos $releasever
+baseurl=https://s3.amazonaws.com/downloads.scylladb.com/rpm/3rdparty/centos/$releasever/noarch/
+enabled=1
+gpgcheck=0
+"""
 
 class ScyllaArtifactSanity(Test):
 
@@ -68,8 +93,19 @@ class ScyllaArtifactSanity(Test):
 
         return debs
 
+    def setup_centos_7(self):
+        self.sw_manager.remove('boost-thread')
+        self.sw_manager.remove('boost-system')
+        scylla_repo = '/etc/yum.repos.d/scylla.repo'
+        scylla_repo_fileobj = open(scylla_repo, 'w')
+        scylla_repo_fileobj.write(CENTOS_REPOS)
+        self.sw_manager.upgrade()
+        return ['scylla-server', 'scylla-jmx', 'scylla-tools']
+
     def scylla_setup(self):
         self.base_url = 'https://s3.amazonaws.com/downloads.scylladb.com/'
+
+        self.sw_manager = software_manager.SoftwareManager()
 
         detected_distro = distro.detect()
         fedora_22 = (detected_distro.name.lower() == 'fedora' and
@@ -77,17 +113,20 @@ class ScyllaArtifactSanity(Test):
         ubuntu_14_04 = (detected_distro.name.lower() == 'ubuntu' and
                         detected_distro.version == '14' and
                         detected_distro.release == '04')
+        centos_7 = (detected_distro.name.lower() == 'centos' and
+                    detected_distro.version == '7')
         pkgs = []
         if fedora_22:
             pkgs = self.download_fedora_22_pkgs()
         elif ubuntu_14_04:
             pkgs = self.download_ubuntu_14_04_pkgs()
+        elif centos_7:
+            pkgs = self.setup_centos_7()
         else:
             self.skip('Unsupported OS: %s' % detected_distro)
 
-        sw_manager = software_manager.SoftwareManager()
         for pkg in pkgs:
-            if not sw_manager.install(pkg):
+            if not self.sw_manager.install(pkg):
                 raise self.error('Package %s could not be installed '
                                  '(see logs for details)' %
                                  os.path.basename(pkg))
