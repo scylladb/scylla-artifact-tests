@@ -139,6 +139,10 @@ class ScyllaArtifactSanity(Test):
         else:
             self.skip('Unsupported OS: %s' % detected_distro)
 
+        # Users are expected to install scylla on up to date distros.
+        # This might cause trouble from time to time, but it's better
+        # than pretending that distro updates can't break our install.
+        self.sw_manager.upgrade()
         for pkg in pkgs:
             if not self.sw_manager.install(pkg):
                 raise self.error('Package %s could not be installed '
