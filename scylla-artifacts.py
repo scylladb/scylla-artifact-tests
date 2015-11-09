@@ -10,6 +10,8 @@ from avocado.utils import process
 from avocado.utils import path
 from avocado.utils import download
 from avocado.utils import service
+from avocado.utils import wait
+from avocado.utils import network
 
 CENTOS_REPOS = """
 [scylla]
@@ -104,6 +106,16 @@ class ScyllaArtifactSanity(Test):
         self.sw_manager.upgrade()
         return ['scylla-server', 'scylla-jmx', 'scylla-tools']
 
+    def wait_services_up(self):
+        service_start_timeout = 120
+        output = wait.wait_for(func=lambda: (not
+                                             network.is_port_free(9042,
+                                                                  'localhost')),
+                               timeout=service_start_timeout)
+        if output is None:
+            self.error('Scylla service does not appear to be up after %s s' %
+                       service_start_timeout)
+
     def scylla_setup(self):
         self.base_url = 'https://s3.amazonaws.com/downloads.scylladb.com/'
 
@@ -142,6 +154,7 @@ class ScyllaArtifactSanity(Test):
                 self.error('Failed to start service %s '
                            '(see logs for details)' % srv)
 
+        self.wait_services_up()
         os.mknod(self.get_setup_file_done())
 
     def setUp(self):
