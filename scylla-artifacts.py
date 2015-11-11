@@ -145,9 +145,9 @@ class ScyllaArtifactSanity(Test):
         self.sw_manager.upgrade()
         for pkg in pkgs:
             if not self.sw_manager.install(pkg):
-                raise self.error('Package %s could not be installed '
-                                 '(see logs for details)' %
-                                 os.path.basename(pkg))
+                self.error('Package %s could not be installed '
+                           '(see logs for details)' %
+                           os.path.basename(pkg))
 
         srv_manager = service.ServiceManager()
         services = ['scylla-server', 'scylla-jmx']
