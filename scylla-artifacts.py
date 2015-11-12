@@ -151,21 +151,29 @@ class ScyllaArtifactSanity(Test):
                     detected_distro.version == '7')
         pkgs = []
 
+        mode = 'release'
+
+        if self.sw_repo is not None:
+            if self.sw_repo.strip() != 'EMPTY':
+                mode = 'ci'
+
         if ubuntu_14_04:
-            if self.sw_repo is not None:
-                pkgs = self.setup_ubuntu_14_04_ci()
-            else:
+            if mode == 'release':
                 pkgs = self.setup_ubuntu_14_04_release()
-        if fedora_22:
-            if self.sw_repo is not None:
-                pkgs = self.setup_fedora_22_ci()
-            else:
+            elif mode == 'ci':
+                pkgs = self.setup_ubuntu_14_04_ci()
+
+        elif fedora_22:
+            if mode == 'release':
                 pkgs = self.setup_fedora_22_release()
+            elif mode == 'ci':
+                pkgs = self.setup_fedora_22_ci()
+
         elif centos_7:
-            if self.sw_repo is not None:
-                pkgs = self.setup_centos_7_ci()
-            else:
+            if mode == 'release':
                 pkgs = self.setup_centos_7_release()
+            elif mode == 'ci':
+                pkgs = self.setup_centos_7_ci()
 
         else:
             self.skip('Unsupported OS: %s' % detected_distro)
