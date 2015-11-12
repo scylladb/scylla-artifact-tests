@@ -55,7 +55,12 @@ class ScyllaArtifactSanity(Test):
         tmpdir = os.path.dirname(self.workdir)
         return os.path.join(tmpdir, 'scylla-setup-done')
 
-    def download_ubuntu_14_04_pkgs(self):
+    def setup_ubuntu_14_04_ci(self):
+        download.get_file(self.sw_repo, self.scylla_apt_repo)
+        self.sw_manager.upgrade()
+        return ['scylla-server', 'scylla-jmx', 'scylla-tools']
+
+    def setup_ubuntu_14_04_release(self):
         base_url = os.path.join(self.base_url, 'deb', 'ubuntu', 'dists',
                                 'trusty', 'scylladb', 'multiverse',
                                 'binary-amd64')
@@ -77,7 +82,12 @@ class ScyllaArtifactSanity(Test):
 
         return debs
 
-    def download_fedora_22_pkgs(self):
+    def setup_fedora_22_ci(self):
+        download.get_file(self.sw_repo, self.scylla_yum_repo)
+        self.sw_manager.upgrade()
+        return ['scylla-server', 'scylla-jmx', 'scylla-tools']
+
+    def setup_fedora_22_release(self):
         x86_url = os.path.join(self.base_url, 'rpm', 'fedora', '22', 'x86_64')
         noarch_url = os.path.join(self.base_url, 'rpm', 'fedora', '22',
                                   'noarch')
@@ -97,11 +107,19 @@ class ScyllaArtifactSanity(Test):
 
         return rpms
 
-    def setup_centos_7(self):
+    def _centos_remove_boost(self):
         self.sw_manager.remove('boost-thread')
         self.sw_manager.remove('boost-system')
-        scylla_repo = '/etc/yum.repos.d/scylla.repo'
-        scylla_repo_fileobj = open(scylla_repo, 'w')
+
+    def setup_centos_7_ci(self):
+        self._centos_remove_boost()
+        download.get_file(self.sw_repo, self.scylla_yum_repo)
+        self.sw_manager.upgrade()
+        return ['scylla-server', 'scylla-jmx', 'scylla-tools']
+
+    def setup_centos_7_release(self):
+        self._centos_remove_boost()
+        scylla_repo_fileobj = open(self.scylla_yum_repo, 'w')
         scylla_repo_fileobj.write(CENTOS_REPOS)
         self.sw_manager.upgrade()
         return ['scylla-server', 'scylla-jmx', 'scylla-tools']
@@ -118,7 +136,9 @@ class ScyllaArtifactSanity(Test):
 
     def scylla_setup(self):
         self.base_url = 'https://s3.amazonaws.com/downloads.scylladb.com/'
-
+        self.scylla_yum_repo = '/etc/yum.repos.d/scylla.repo'
+        self.scylla_apt_repo = '/etc/apt/sources.list.d/scylla.list'
+        self.sw_repo = self.params.get('sw_repo', default=None)
         self.sw_manager = software_manager.SoftwareManager()
 
         detected_distro = distro.detect()
@@ -130,12 +150,23 @@ class ScyllaArtifactSanity(Test):
         centos_7 = (detected_distro.name.lower() == 'centos' and
                     detected_distro.version == '7')
         pkgs = []
+
+        if ubuntu_14_04:
+            if self.sw_repo is not None:
+                pkgs = self.setup_ubuntu_14_04_ci()
+            else:
+                pkgs = self.setup_ubuntu_14_04_release()
         if fedora_22:
-            pkgs = self.download_fedora_22_pkgs()
-        elif ubuntu_14_04:
-            pkgs = self.download_ubuntu_14_04_pkgs()
+            if self.sw_repo is not None:
+                pkgs = self.setup_fedora_22_ci()
+            else:
+                pkgs = self.setup_fedora_22_release()
         elif centos_7:
-            pkgs = self.setup_centos_7()
+            if self.sw_repo is not None:
+                pkgs = self.setup_centos_7_ci()
+            else:
+                pkgs = self.setup_centos_7_release()
+
         else:
             self.skip('Unsupported OS: %s' % detected_distro)
 
