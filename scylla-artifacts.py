@@ -55,26 +55,6 @@ class ScyllaArtifactSanity(Test):
         tmpdir = os.path.dirname(self.workdir)
         return os.path.join(tmpdir, 'scylla-setup-done')
 
-    def download_fedora_22_pkgs(self):
-        x86_url = os.path.join(self.base_url, 'rpm', 'fedora', '22', 'x86_64')
-        noarch_url = os.path.join(self.base_url, 'rpm', 'fedora', '22',
-                                  'noarch')
-        scylla_server = 'scylla-server-0.11-20151102.f849c4b.fc22.x86_64.rpm'
-        scylla_jmx = 'scylla-jmx-0.11-20151102.36ed2cf.fc22.noarch.rpm'
-        scylla_tools = 'scylla-tools-0.11-20151102.ff63598.fc22.noarch.rpm'
-        rpms = []
-
-        rpms_download_info = [(x86_url, scylla_server),
-                              (noarch_url, scylla_jmx),
-                              (noarch_url, scylla_tools)]
-
-        for b_url, rpm in rpms_download_info:
-            src = os.path.join(b_url, rpm)
-            dst = os.path.join(self.outputdir, rpm)
-            rpms.append(download.get_file(src, dst))
-
-        return rpms
-
     def download_ubuntu_14_04_pkgs(self):
         base_url = os.path.join(self.base_url, 'deb', 'ubuntu', 'dists',
                                 'trusty', 'scylladb', 'multiverse',
@@ -96,6 +76,26 @@ class ScyllaArtifactSanity(Test):
             debs.append(download.get_file(src, dst))
 
         return debs
+
+    def download_fedora_22_pkgs(self):
+        x86_url = os.path.join(self.base_url, 'rpm', 'fedora', '22', 'x86_64')
+        noarch_url = os.path.join(self.base_url, 'rpm', 'fedora', '22',
+                                  'noarch')
+        scylla_server = 'scylla-server-0.11-20151102.f849c4b.fc22.x86_64.rpm'
+        scylla_jmx = 'scylla-jmx-0.11-20151102.36ed2cf.fc22.noarch.rpm'
+        scylla_tools = 'scylla-tools-0.11-20151102.ff63598.fc22.noarch.rpm'
+        rpms = []
+
+        rpms_download_info = [(x86_url, scylla_server),
+                              (noarch_url, scylla_jmx),
+                              (noarch_url, scylla_tools)]
+
+        for b_url, rpm in rpms_download_info:
+            src = os.path.join(b_url, rpm)
+            dst = os.path.join(self.outputdir, rpm)
+            rpms.append(download.get_file(src, dst))
+
+        return rpms
 
     def setup_centos_7(self):
         self.sw_manager.remove('boost-thread')
