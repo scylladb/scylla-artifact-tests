@@ -124,6 +124,10 @@ class ScyllaArtifactSanity(Test):
         self.sw_manager.upgrade()
         return ['scylla-server', 'scylla-jmx', 'scylla-tools']
 
+    def setup_ami(self):
+        self.log.info("Testing AMI, this system is supposed to be all set...")
+        return []
+
     def wait_services_up(self):
         service_start_timeout = 120
         output = wait.wait_for(func=lambda: (not
@@ -157,7 +161,11 @@ class ScyllaArtifactSanity(Test):
             if self.sw_repo.strip() != 'EMPTY':
                 mode = 'ci'
 
-        if ubuntu_14_04:
+        ami = self.params.get('ami', default=False) is True
+        if ami:
+            pkgs = self.setup_ami()
+
+        elif ubuntu_14_04:
             if mode == 'release':
                 pkgs = self.setup_ubuntu_14_04_release()
             elif mode == 'ci':
@@ -181,21 +189,23 @@ class ScyllaArtifactSanity(Test):
         # Users are expected to install scylla on up to date distros.
         # This might cause trouble from time to time, but it's better
         # than pretending that distro updates can't break our install.
-        self.sw_manager.upgrade()
+        if not ami:
+            self.sw_manager.upgrade()
         for pkg in pkgs:
             if not self.sw_manager.install(pkg):
                 self.error('Package %s could not be installed '
                            '(see logs for details)' %
                            os.path.basename(pkg))
 
-        srv_manager = service.ServiceManager()
-        services = ['scylla-server', 'scylla-jmx']
-        for srv in services:
-            srv_manager.start(srv)
-        for srv in services:
-            if not srv_manager.status(srv):
-                self.error('Failed to start service %s '
-                           '(see logs for details)' % srv)
+        if not ami:
+            srv_manager = service.ServiceManager()
+            services = ['scylla-server', 'scylla-jmx']
+            for srv in services:
+                srv_manager.start(srv)
+            for srv in services:
+                if not srv_manager.status(srv):
+                    self.error('Failed to start service %s '
+                               '(see logs for details)' % srv)
 
         self.wait_services_up()
         os.mknod(self.get_setup_file_done())
