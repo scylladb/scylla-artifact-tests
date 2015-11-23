@@ -64,9 +64,9 @@ class ScyllaArtifactSanity(Test):
         base_url = os.path.join(self.base_url, 'deb', 'ubuntu', 'dists',
                                 'trusty', 'scylladb', 'multiverse',
                                 'binary-amd64')
-        scylla_server = 'scylla-server_0.11-ubuntu1_amd64.deb'
-        scylla_jmx = 'scylla-jmx_0.11-ubuntu1_all.deb'
-        scylla_tools = 'scylla-tools_0.11-ubuntu1_all.deb'
+        scylla_server = 'scylla-server_0.12-20151122.a74ec0b-ubuntu1_amd64.deb'
+        scylla_jmx = 'scylla-jmx_0.12-20151122.f32307a-ubuntu1_all.deb'
+        scylla_tools = 'scylla-tools_0.12-20151122.bcaed8e-ubuntu1_all.deb'
         thrift = 'libthrift0_0.9.1-ubuntu1_amd64.deb'
         debs = []
 
@@ -91,9 +91,9 @@ class ScyllaArtifactSanity(Test):
         x86_url = os.path.join(self.base_url, 'rpm', 'fedora', '22', 'x86_64')
         noarch_url = os.path.join(self.base_url, 'rpm', 'fedora', '22',
                                   'noarch')
-        scylla_server = 'scylla-server-0.11-20151102.f849c4b.fc22.x86_64.rpm'
-        scylla_jmx = 'scylla-jmx-0.11-20151102.36ed2cf.fc22.noarch.rpm'
-        scylla_tools = 'scylla-tools-0.11-20151102.ff63598.fc22.noarch.rpm'
+        scylla_server = 'scylla-server-0.12-20151119.a74ec0b.fc22.x86_64.rpm'
+        scylla_jmx = 'scylla-jmx-0.12-20151119.215d267.fc22.noarch.rpm'
+        scylla_tools = 'scylla-tools-0.12-20151119.bcaed8e.fc22.noarch.rpm'
         rpms = []
 
         rpms_download_info = [(x86_url, scylla_server),
