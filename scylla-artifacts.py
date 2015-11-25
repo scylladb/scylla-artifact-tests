@@ -144,6 +144,7 @@ class ScyllaArtifactSanity(Test):
         self.scylla_apt_repo = '/etc/apt/sources.list.d/scylla.list'
         self.sw_repo = self.params.get('sw_repo', default=None)
         self.sw_manager = software_manager.SoftwareManager()
+        self.srv_manager = None
 
         detected_distro = distro.detect()
         fedora_22 = (detected_distro.name.lower() == 'fedora' and
@@ -198,14 +199,9 @@ class ScyllaArtifactSanity(Test):
                            os.path.basename(pkg))
 
         if not ami:
-            srv_manager = service.ServiceManager()
-            services = ['scylla-server', 'scylla-jmx']
-            for srv in services:
-                srv_manager.start(srv)
-            for srv in services:
-                if not srv_manager.status(srv):
-                    self.error('Failed to start service %s '
-                               '(see logs for details)' % srv)
+            self.srv_manager = service.ServiceManager()
+            self.services = ['scylla-server', 'scylla-jmx']
+            self.start_services()
 
         self.wait_services_up()
         os.mknod(self.get_setup_file_done())
@@ -214,16 +210,57 @@ class ScyllaArtifactSanity(Test):
         if not os.path.isfile(self.get_setup_file_done()):
             self.scylla_setup()
 
-    def test_cassandra_stress(self):
+    def start_services(self):
+        for srv in self.services:
+            self.srv_manager.start(srv)
+        for srv in self.services:
+            if not self.srv_manager.status(srv):
+                self.error('Failed to start service %s '
+                           '(see logs for details)' % srv)
+
+    def stop_services(self):
+        for srv in reversed(self.services):
+            self.srv_manager.stop(srv)
+        for srv in self.services:
+            if self.srv_manager.status(srv):
+                self.error('Failed to stop service %s '
+                           '(see logs for details)' % srv)
+
+    def restart_services(self):
+        for srv in self.services:
+            self.srv_manager.restart(srv)
+        for srv in self.services:
+            if not self.srv_manager.status(srv):
+                self.error('Failed to start service %s '
+                           '(see logs for details)' % srv)
+
+    def run_cassandra_stress(self):
         cassandra_stress_exec = path.find_command('cassandra-stress')
-        cassandra_stress = '%s write -mode cql3 native' % cassandra_stress_exec
+        cassandra_stress = ('%s mixed duration=2m -mode cql3 native '
+                            '-rate threads=100' % cassandra_stress_exec)
         process.run(cassandra_stress)
 
-    def test_nodetool(self):
+    def run_nodetool(self):
         nodetool_exec = path.find_command('nodetool')
         nodetool = '%s status' % nodetool_exec
         process.run(nodetool)
 
+    def test_after_install(self):
+        self.run_nodetool()
+        self.run_cassandra_stress()
+
+    def test_after_stop_start(self):
+        self.stop_services()
+        self.start_services()
+        self.wait_services_up()
+        self.run_nodetool()
+        self.run_cassandra_stress()
+
+    def test_after_restart(self):
+        self.restart_services()
+        self.wait_services_up()
+        self.run_nodetool()
+        self.run_cassandra_stress()
 
 if __name__ == '__main__':
     main()
