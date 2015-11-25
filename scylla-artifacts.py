@@ -145,6 +145,7 @@ class ScyllaArtifactSanity(Test):
         self.sw_repo = self.params.get('sw_repo', default=None)
         self.sw_manager = software_manager.SoftwareManager()
         self.srv_manager = None
+        self.services = ['scylla-server', 'scylla-jmx']
 
         detected_distro = distro.detect()
         fedora_22 = (detected_distro.name.lower() == 'fedora' and
@@ -200,7 +201,6 @@ class ScyllaArtifactSanity(Test):
 
         if not ami:
             self.srv_manager = service.ServiceManager()
-            self.services = ['scylla-server', 'scylla-jmx']
             self.start_services()
 
         self.wait_services_up()
