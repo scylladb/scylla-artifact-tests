@@ -240,7 +240,10 @@ class ScyllaArtifactSanity(Test):
         cassandra_stress_exec = path.find_command('cassandra-stress')
         cassandra_stress = ('%s write duration=2m -mode cql3 native '
                             '-rate threads=100' % cassandra_stress_exec)
-        process.run(cassandra_stress)
+        result = process.run(cassandra_stress)
+        output = result.stdout + result.stderr
+        if 'Exception in thread' in output:
+            self.fail('Java Exceptions found during cassandra-stress execution')
 
     def run_nodetool(self):
         nodetool_exec = path.find_command('nodetool')
