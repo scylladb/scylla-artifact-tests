@@ -238,7 +238,7 @@ class ScyllaArtifactSanity(Test):
 
     def run_cassandra_stress(self):
         cassandra_stress_exec = path.find_command('cassandra-stress')
-        cassandra_stress = ('%s mixed duration=2m -mode cql3 native '
+        cassandra_stress = ('%s write duration=2m -mode cql3 native '
                             '-rate threads=100' % cassandra_stress_exec)
         process.run(cassandra_stress)
 
