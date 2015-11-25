@@ -50,6 +50,7 @@ class ScyllaArtifactSanity(Test):
     2) Run nodetool
     """
     setup_done_file = None
+    services = ['scylla-server', 'scylla-jmx']
 
     def get_setup_file_done(self):
         tmpdir = os.path.dirname(self.workdir)
@@ -145,7 +146,6 @@ class ScyllaArtifactSanity(Test):
         self.sw_repo = self.params.get('sw_repo', default=None)
         self.sw_manager = software_manager.SoftwareManager()
         self.srv_manager = None
-        self.services = ['scylla-server', 'scylla-jmx']
 
         detected_distro = distro.detect()
         fedora_22 = (detected_distro.name.lower() == 'fedora' and
@@ -200,7 +200,6 @@ class ScyllaArtifactSanity(Test):
                            os.path.basename(pkg))
 
         if not ami:
-            self.srv_manager = service.ServiceManager()
             self.start_services()
 
         self.wait_services_up()
@@ -211,26 +210,29 @@ class ScyllaArtifactSanity(Test):
             self.scylla_setup()
 
     def start_services(self):
+        srv_manager = service.ServiceManager()
         for srv in self.services:
-            self.srv_manager.start(srv)
+            srv_manager.start(srv)
         for srv in self.services:
-            if not self.srv_manager.status(srv):
+            if not srv_manager.status(srv):
                 self.error('Failed to start service %s '
                            '(see logs for details)' % srv)
 
     def stop_services(self):
+        srv_manager = service.ServiceManager()
         for srv in reversed(self.services):
-            self.srv_manager.stop(srv)
+            srv_manager.stop(srv)
         for srv in self.services:
-            if self.srv_manager.status(srv):
+            if srv_manager.status(srv):
                 self.error('Failed to stop service %s '
                            '(see logs for details)' % srv)
 
     def restart_services(self):
+        srv_manager = service.ServiceManager()
         for srv in self.services:
-            self.srv_manager.restart(srv)
+            srv_manager.restart(srv)
         for srv in self.services:
-            if not self.srv_manager.status(srv):
+            if not srv_manager.status(srv):
                 self.error('Failed to start service %s '
                            '(see logs for details)' % srv)
 
