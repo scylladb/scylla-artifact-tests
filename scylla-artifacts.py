@@ -129,12 +129,16 @@ class ScyllaArtifactSanity(Test):
         self.log.info("Testing AMI, this system is supposed to be all set...")
         return []
 
+    def _scylla_service_is_up(self):
+        srv_manager = service.ServiceManager()
+        for srv in self.services:
+            srv_manager.status(srv)
+        return not network.is_port_free(9042, 'localhost')
+
     def wait_services_up(self):
         service_start_timeout = 120
-        output = wait.wait_for(func=lambda: (not
-                                             network.is_port_free(9042,
-                                                                  'localhost')),
-                               timeout=service_start_timeout)
+        output = wait.wait_for(func=self._scylla_service_is_up,
+                               timeout=service_start_timeout, step=5)
         if output is None:
             self.error('Scylla service does not appear to be up after %s s' %
                        service_start_timeout)
