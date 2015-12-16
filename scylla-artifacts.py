@@ -1,7 +1,6 @@
 #!/usr/bin/python
 
 import os
-import time
 
 from avocado import Test
 from avocado import main
@@ -144,16 +143,6 @@ class ScyllaArtifactSanity(Test):
             self.error('Scylla service does not appear to be up after %s s' %
                        service_start_timeout)
 
-    def update_package_cache(self):
-        attempts_to_update = 0
-        max_attempts = 5
-        while not self.sw_manager.upgrade():
-            time.sleep(1)
-            attempts_to_update += 1
-            if attempts_to_update > max_attempts:
-                self.error('Failed to update package cache after %s '
-                           'attempts (see logs for details)' % max_attempts)
-
     def scylla_setup(self):
         self.base_url = 'https://s3.amazonaws.com/downloads.scylladb.com/'
         self.scylla_yum_repo = '/etc/yum.repos.d/scylla.repo'
@@ -207,8 +196,7 @@ class ScyllaArtifactSanity(Test):
         # This might cause trouble from time to time, but it's better
         # than pretending that distro updates can't break our install.
         if not ami:
-            self.update_package_cache()
-
+            self.sw_manager.upgrade()
         for pkg in pkgs:
             if not self.sw_manager.install(pkg):
                 self.error('Package %s could not be installed '
