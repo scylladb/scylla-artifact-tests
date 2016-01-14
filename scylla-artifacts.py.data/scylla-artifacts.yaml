@@ -1,0 +1,2 @@
+ami: false
+sw_repo: https://s3.amazonaws.com/downloads.scylladb.com/deb/unstable/ubuntu/branch-0.16/54/scylla.list
