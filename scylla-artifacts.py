@@ -257,27 +257,46 @@ class ScyllaArtifactSanity(Test):
         result_mixed = process.run(stress_mixed)
         check_output(result_mixed)
 
+    def get_scylla_logs(self):
+        try:
+            journalctl_cmd = path.find_command('journalctl')
+            process.run('%s --unit scylla-server.service' % journalctl_cmd,
+                        ignore_status=True)
+            process.run('%s --unit scylla-jmx.service' % journalctl_cmd,
+                        ignore_status=True)
+        except path.CmdNotFoundError:
+            process.run('grep scylla /var/log/syslog', ignore_status=True)
+
     def run_nodetool(self):
         nodetool_exec = path.find_command('nodetool')
         nodetool = '%s status' % nodetool_exec
         process.run(nodetool)
 
     def test_after_install(self):
-        self.run_nodetool()
-        self.run_cassandra_stress()
+        try:
+            self.run_nodetool()
+            self.run_cassandra_stress()
+        finally:
+            self.get_scylla_logs()
 
     def test_after_stop_start(self):
-        self.stop_services()
-        self.start_services()
-        self.wait_services_up()
-        self.run_nodetool()
-        self.run_cassandra_stress()
+        try:
+            self.stop_services()
+            self.start_services()
+            self.wait_services_up()
+            self.run_nodetool()
+            self.run_cassandra_stress()
+        finally:
+            self.get_scylla_logs()
 
     def test_after_restart(self):
-        self.restart_services()
-        self.wait_services_up()
-        self.run_nodetool()
-        self.run_cassandra_stress()
+        try:
+            self.restart_services()
+            self.wait_services_up()
+            self.run_nodetool()
+            self.run_cassandra_stress()
+        finally:
+            self.get_scylla_logs()
 
 if __name__ == '__main__':
     main()
