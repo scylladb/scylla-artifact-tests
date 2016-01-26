@@ -140,6 +140,7 @@ class ScyllaArtifactSanity(Test):
         output = wait.wait_for(func=self._scylla_service_is_up,
                                timeout=service_start_timeout, step=5)
         if output is None:
+            self.get_scylla_logs()
             self.error('Scylla service does not appear to be up after %s s' %
                        service_start_timeout)
 
