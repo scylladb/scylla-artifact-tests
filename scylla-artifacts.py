@@ -220,6 +220,8 @@ class ScyllaArtifactSanity(Test):
             srv_manager.start(srv)
         for srv in self.services:
             if not srv_manager.status(srv):
+                if service.get_name_of_init() == 'systemd':
+                    process.run('journalctl -xe', ignore_status=True, verbose=True)
                 self.error('Failed to start service %s '
                            '(see logs for details)' % srv)
 
@@ -229,6 +231,8 @@ class ScyllaArtifactSanity(Test):
             srv_manager.stop(srv)
         for srv in self.services:
             if srv_manager.status(srv):
+                if service.get_name_of_init() == 'systemd':
+                    process.run('journalctl -xe', ignore_status=True, verbose=True)
                 self.error('Failed to stop service %s '
                            '(see logs for details)' % srv)
 
@@ -238,6 +242,8 @@ class ScyllaArtifactSanity(Test):
             srv_manager.restart(srv)
         for srv in self.services:
             if not srv_manager.status(srv):
+                if service.get_name_of_init() == 'systemd':
+                    process.run('journalctl -xe', ignore_status=True, verbose=True)
                 self.error('Failed to start service %s '
                            '(see logs for details)' % srv)
 
