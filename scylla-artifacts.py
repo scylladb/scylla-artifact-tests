@@ -267,6 +267,8 @@ class ScyllaArtifactSanity(Test):
     def get_scylla_logs(self):
         try:
             journalctl_cmd = path.find_command('journalctl')
+            process.run('%s --unit scylla-io-setup.service' % journalctl_cmd,
+                        ignore_status=True)
             process.run('%s --unit scylla-server.service' % journalctl_cmd,
                         ignore_status=True)
             process.run('%s --unit scylla-jmx.service' % journalctl_cmd,
