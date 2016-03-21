@@ -57,7 +57,7 @@ class ScyllaArtifactSanity(Test):
         return os.path.join(tmpdir, 'scylla-setup-done')
 
     def setup_ubuntu_14_04_ci(self):
-        download.get_file(self.sw_repo, self.scylla_apt_repo)
+        process.run('sudo curl %s > %s' % (self.sw_repo, self.scylla_apt_repo), shell=True)
         self.sw_manager.upgrade()
         return ['scylla-server', 'scylla-jmx', 'scylla-tools']
 
@@ -84,7 +84,7 @@ class ScyllaArtifactSanity(Test):
         return debs
 
     def setup_fedora_22_ci(self):
-        download.get_file(self.sw_repo, self.scylla_yum_repo)
+        process.run('sudo curl %s > %s' % (self.sw_repo, self.scylla_yum_repo), shell=True)
         self.sw_manager.upgrade()
         return ['scylla-server', 'scylla-jmx', 'scylla-tools']
 
@@ -114,7 +114,7 @@ class ScyllaArtifactSanity(Test):
 
     def setup_centos_7_ci(self):
         self._centos_remove_boost()
-        download.get_file(self.sw_repo, self.scylla_yum_repo)
+        process.run('sudo curl %s > %s' % (self.sw_repo, self.scylla_yum_repo), shell=True)
         self.sw_manager.upgrade()
         return ['scylla-server', 'scylla-jmx', 'scylla-tools']
 
