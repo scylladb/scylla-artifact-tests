@@ -136,7 +136,7 @@ class ScyllaArtifactSanity(Test):
         return not network.is_port_free(9042, 'localhost')
 
     def wait_services_up(self):
-        service_start_timeout = 120
+        service_start_timeout = 3600
         output = wait.wait_for(func=self._scylla_service_is_up,
                                timeout=service_start_timeout, step=5)
         if output is None:
