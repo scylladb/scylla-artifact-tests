@@ -204,12 +204,11 @@ class ScyllaArtifactSanity(Test):
                            '(see logs for details)' %
                            os.path.basename(pkg))
 
-        # Let's use very low/conservative io config numbers
-        # as a workaround for now.
-        seastar_io_conf = 'SEASTAR_IO="--max-io-requests=1 --num-io-queues=1"'
-        process.run('echo %s > /etc/scylla.d/io.conf' % seastar_io_conf, shell=True)
-        process.run('touch /etc/scylla/io_configured')
         if not ami:
+            # Let's use very low/conservative io config numbers
+            # as a workaround for now.
+            process.run('echo "SEASTAR_IO=\'--max-io-requests=1 --num-io-queues=1\'" | sudo tee /etc/scylla.d/io.conf', shell=True)
+            process.run('touch /etc/scylla/io_configured')
             self.start_services()
 
         self.wait_services_up()
