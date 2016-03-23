@@ -259,12 +259,12 @@ class ScyllaArtifactSanity(Test):
                 if 'Exception in thread' in line:
                     self.fail('cassandra-stress: %s' % line.strip())
         cassandra_stress_exec = path.find_command('cassandra-stress')
-        stress_populate = ('%s write n=1000000 -mode cql3 native' %
+        stress_populate = ('%s write n=10000 -mode cql3 native' %
                            cassandra_stress_exec)
         result_populate = process.run(stress_populate)
         check_output(result_populate)
-        stress_mixed = ('%s mixed duration=2m -mode cql3 native '
-                        '-rate threads=100' % cassandra_stress_exec)
+        stress_mixed = ('%s mixed duration=1m -mode cql3 native '
+                        '-rate threads=10' % cassandra_stress_exec)
         result_mixed = process.run(stress_mixed)
         check_output(result_mixed)
 
