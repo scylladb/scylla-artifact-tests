@@ -265,8 +265,9 @@ class ScyllaArtifactSanity(Test):
         result_populate = process.run(stress_populate)
         check_output(result_populate)
         stress_mixed = ('%s mixed duration=1m -mode cql3 native '
-                        '-rate threads=10' % cassandra_stress_exec)
-        result_mixed = process.run(stress_mixed)
+                        '-rate threads=10 -pop dist=UNIFORM\(1..10000\)' %
+                        cassandra_stress_exec)
+        result_mixed = process.run(stress_mixed, shell=True)
         check_output(result_mixed)
 
     def get_scylla_logs(self):
