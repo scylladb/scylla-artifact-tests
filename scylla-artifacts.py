@@ -257,7 +257,7 @@ class ScyllaArtifactSanity(Test):
             output = result.stdout + result.stderr
             lines = output.splitlines()
             for line in lines:
-                if 'Exception in thread' in line:
+                if 'java.io.IOException' in line:
                     self.fail('cassandra-stress: %s' % line.strip())
         cassandra_stress_exec = path.find_command('cassandra-stress')
         stress_populate = ('%s write n=10000 -mode cql3 native' %
