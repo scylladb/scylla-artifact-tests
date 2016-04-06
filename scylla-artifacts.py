@@ -260,7 +260,7 @@ class ScyllaArtifactSanity(Test):
                 if 'java.io.IOException' in line:
                     self.fail('cassandra-stress: %s' % line.strip())
         cassandra_stress_exec = path.find_command('cassandra-stress')
-        stress_populate = ('%s write n=10000 -mode cql3 native -pop dist=SEQ\(1..10000\)' %
+        stress_populate = ('%s write n=10000 -mode cql3 native -pop seq=1..10000' %
                            cassandra_stress_exec)
         result_populate = process.run(stress_populate)
         check_output(result_populate)
