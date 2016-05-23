@@ -61,6 +61,11 @@ class ScyllaArtifactSanity(Test):
         self.sw_manager.upgrade()
         return ['scylla-server', 'scylla-jmx', 'scylla-tools']
 
+    def setup_ubuntu_16_04_ci(self):
+        process.run('sudo curl %s -o %s' % (self.sw_repo, self.scylla_apt_repo), shell=True)
+        self.sw_manager.upgrade()
+        return ['scylla-server', 'scylla-jmx', 'scylla-tools']
+
     def setup_ubuntu_14_04_release(self):
         base_url = os.path.join(self.base_url, 'deb', 'ubuntu', 'dists',
                                 'trusty', 'scylladb', 'multiverse',
@@ -158,6 +163,9 @@ class ScyllaArtifactSanity(Test):
         ubuntu_14_04 = (detected_distro.name.lower() == 'ubuntu' and
                         detected_distro.version == '14' and
                         detected_distro.release == '04')
+        ubuntu_16_04 = (detected_distro.name.lower() == 'ubuntu' and
+                        detected_distro.version == '16' and
+                        detected_distro.release == '04')
         centos_7 = (detected_distro.name.lower() == 'centos' and
                     detected_distro.version == '7')
         pkgs = []
@@ -177,6 +185,10 @@ class ScyllaArtifactSanity(Test):
                 pkgs = self.setup_ubuntu_14_04_release()
             elif mode == 'ci':
                 pkgs = self.setup_ubuntu_14_04_ci()
+
+        elif ubuntu_16_04:
+            if mode == 'ci':
+                pkgs = self.setup_ubuntu_16_04_ci()
 
         elif fedora_22:
             if mode == 'release':
