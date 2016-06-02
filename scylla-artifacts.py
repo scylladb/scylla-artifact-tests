@@ -1,6 +1,8 @@
 #!/usr/bin/python
 
 import os
+import logging
+import threading
 
 from avocado import Test
 from avocado import main
@@ -8,131 +10,43 @@ from avocado.utils import distro
 from avocado.utils import software_manager
 from avocado.utils import process
 from avocado.utils import path
-from avocado.utils import download
 from avocado.utils import service
 from avocado.utils import wait
 from avocado.utils import network
 
-CENTOS_REPOS = """
-[scylla]
-name=Scylla for Centos $releasever - $basearch
-baseurl=https://s3.amazonaws.com/downloads.scylladb.com/rpm/centos/$releasever/$basearch/
-enabled=1
-gpgcheck=0
 
-[scylla-generic]
-name=Scylla for centos $releasever
-baseurl=https://s3.amazonaws.com/downloads.scylladb.com/rpm/centos/$releasever/noarch/
-enabled=1
-gpgcheck=0
-
-[scylla-3rdparty]
-name=Scylla 3rdParty for Centos $releasever - $basearch
-baseurl=https://s3.amazonaws.com/downloads.scylladb.com/rpm/3rdparty/centos/$releasever/$basearch/
-enabled=1
-gpgcheck=0
-
-[scylla-3rdparty-generic]
-name=Scylla 3rdParty for Centos $releasever
-baseurl=https://s3.amazonaws.com/downloads.scylladb.com/rpm/3rdparty/centos/$releasever/noarch/
-enabled=1
-gpgcheck=0
-"""
+class StartServiceError(Exception):
+    pass
 
 
-class ScyllaArtifactSanity(Test):
+class StopServiceError(Exception):
+    pass
 
-    """
-    Sanity check of the build artifacts (deb, rpm)
 
-    setup: Install artifacts (deb, rpm)
-    1) Run cassandra-stress
-    2) Run nodetool
-    """
-    setup_done_file = None
-    services = ['scylla-server', 'scylla-jmx']
+class RestartServiceError(Exception):
+    pass
 
-    def get_setup_file_done(self):
-        tmpdir = os.path.dirname(self.workdir)
-        return os.path.join(tmpdir, 'scylla-setup-done')
 
-    def setup_ubuntu_14_04_ci(self):
-        process.run('sudo curl %s -o %s' % (self.sw_repo, self.scylla_apt_repo), shell=True)
-        self.sw_manager.upgrade()
-        return ['scylla-server', 'scylla-jmx', 'scylla-tools']
+class InstallPackageError(Exception):
+    pass
 
-    def setup_ubuntu_16_04_ci(self):
-        process.run('sudo curl %s -o %s' % (self.sw_repo, self.scylla_apt_repo), shell=True)
-        self.sw_manager.upgrade()
-        return ['scylla-server', 'scylla-jmx', 'scylla-tools']
 
-    def setup_ubuntu_14_04_release(self):
-        base_url = os.path.join(self.base_url, 'deb', 'ubuntu', 'dists',
-                                'trusty', 'scylladb', 'multiverse',
-                                'binary-amd64')
-        scylla_server = 'scylla-server_0.13.1-20151210.59cd785-ubuntu1_amd64.deb'
-        scylla_jmx = 'scylla-jmx_0.13.1-20151210.fab577c-ubuntu1_all.deb'
-        scylla_tools = 'scylla-tools_0.13.1-20151210.76b1b01-ubuntu1_all.deb'
-        thrift = 'libthrift0_0.9.1-ubuntu1_amd64.deb'
-        debs = []
+def get_scylla_logs():
+    try:
+        journalctl_cmd = path.find_command('journalctl')
+        process.run('sudo %s -f '
+                    '-u scylla-io-setup.service '
+                    '-u scylla-server.service '
+                    '-u scylla-jmx.service' % journalctl_cmd,
+                    verbose=True, ignore_status=True)
+    except path.CmdNotFoundError:
+        process.run('tail -f /var/log/syslog | grep scylla', ignore_status=True)
 
-        debs_download_info = [(base_url, thrift),
-                              (base_url, scylla_server),
-                              (base_url, scylla_jmx),
-                              (base_url, scylla_tools)]
 
-        for b_url, deb in debs_download_info:
-            src = os.path.join(b_url, deb)
-            dst = os.path.join(self.outputdir, deb)
-            debs.append(download.get_file(src, dst))
+class ScyllaServiceManager(object):
 
-        return debs
-
-    def setup_fedora_22_ci(self):
-        process.run('sudo curl %s -o %s' % (self.sw_repo, self.scylla_yum_repo), shell=True)
-        self.sw_manager.upgrade()
-        return ['scylla-server', 'scylla-jmx', 'scylla-tools']
-
-    def setup_fedora_22_release(self):
-        x86_url = os.path.join(self.base_url, 'rpm', 'fedora', '22', 'x86_64')
-        noarch_url = os.path.join(self.base_url, 'rpm', 'fedora', '22',
-                                  'noarch')
-        scylla_server = 'scylla-server-0.13.1-20151210.59cd785.fc22.x86_64.rpm'
-        scylla_jmx = 'scylla-jmx-0.13.1-20151211.fab577c.fc22.noarch.rpm'
-        scylla_tools = 'scylla-tools-0.13.1-20151211.76b1b01.fc22.noarch.rpm'
-        rpms = []
-
-        rpms_download_info = [(x86_url, scylla_server),
-                              (noarch_url, scylla_jmx),
-                              (noarch_url, scylla_tools)]
-
-        for b_url, rpm in rpms_download_info:
-            src = os.path.join(b_url, rpm)
-            dst = os.path.join(self.outputdir, rpm)
-            rpms.append(download.get_file(src, dst))
-
-        return rpms
-
-    def _centos_remove_boost(self):
-        self.sw_manager.remove('boost-thread')
-        self.sw_manager.remove('boost-system')
-
-    def setup_centos_7_ci(self):
-        self._centos_remove_boost()
-        process.run('sudo curl %s -o %s' % (self.sw_repo, self.scylla_yum_repo), shell=True)
-        self.sw_manager.upgrade()
-        return ['scylla-server', 'scylla-jmx', 'scylla-tools']
-
-    def setup_centos_7_release(self):
-        self._centos_remove_boost()
-        scylla_repo_fileobj = open(self.scylla_yum_repo, 'w')
-        scylla_repo_fileobj.write(CENTOS_REPOS)
-        self.sw_manager.upgrade()
-        return ['scylla-server', 'scylla-jmx', 'scylla-tools']
-
-    def setup_ami(self):
-        self.log.info("Testing AMI, this system is supposed to be all set...")
-        return []
+    def __init__(self):
+        self.services = ['scylla-server', 'scylla-jmx']
 
     def _scylla_service_is_up(self):
         srv_manager = service.ServiceManager()
@@ -145,17 +59,220 @@ class ScyllaArtifactSanity(Test):
         output = wait.wait_for(func=self._scylla_service_is_up,
                                timeout=service_start_timeout, step=5)
         if output is None:
-            self.get_scylla_logs()
-            self.error('Scylla service does not appear to be up after %s s' %
-                       service_start_timeout)
+            e_msg = 'Scylla service does not appear to be up after %s s' % service_start_timeout
+            raise StartServiceError(e_msg)
+
+    def start_services(self):
+        srv_manager = service.ServiceManager()
+        for srv in self.services:
+            srv_manager.start(srv)
+        for srv in self.services:
+            if not srv_manager.status(srv):
+                if service.get_name_of_init() == 'systemd':
+                    process.run('journalctl -xe', ignore_status=True, verbose=True)
+                e_msg = ('Failed to start service %s '
+                         '(see logs for details)' % srv)
+                raise StartServiceError(e_msg)
+
+    def stop_services(self):
+        srv_manager = service.ServiceManager()
+        for srv in reversed(self.services):
+            srv_manager.stop(srv)
+        for srv in self.services:
+            if srv_manager.status(srv):
+                if service.get_name_of_init() == 'systemd':
+                    process.run('journalctl -xe', ignore_status=True, verbose=True)
+                e_msg = ('Failed to stop service %s '
+                         '(see logs for details)' % srv)
+                raise StopServiceError(e_msg)
+
+    def restart_services(self):
+        srv_manager = service.ServiceManager()
+        for srv in self.services:
+            srv_manager.restart(srv)
+        for srv in self.services:
+            if not srv_manager.status(srv):
+                if service.get_name_of_init() == 'systemd':
+                    process.run('journalctl -xe', ignore_status=True, verbose=True)
+                e_msg = ('Failed to restart service %s '
+                         '(see logs for details)' % srv)
+                raise RestartServiceError(e_msg)
+
+
+class ScyllaInstallGeneric(object):
+
+    def __init__(self, sw_repo=None, mode='ci'):
+        self.base_url = 'https://s3.amazonaws.com/downloads.scylladb.com/'
+        self.mode = mode
+        self.sw_manager = software_manager.SoftwareManager()
+        self.sw_repo_src = sw_repo
+        self.sw_repo_dst = None
+        self.log = logging.getLogger('avocado.test')
+        self.srv_manager = ScyllaServiceManager()
+
+    def run(self):
+        self.sw_manager.upgrade()
+        get_packages = getattr(self, 'setup_%s' % self.mode)
+        pkgs = get_packages()
+        for pkg in pkgs:
+            if not self.sw_manager.install(pkg):
+                e_msg = ('Package %s could not be installed '
+                         '(see logs for details)' % os.path.basename(pkg))
+                raise InstallPackageError(e_msg)
+        process.run('/usr/lib/scylla/scylla_io_setup', shell=True)
+        self.srv_manager.start_services()
+        self.srv_manager.wait_services_up()
+
+
+class ScyllaInstallUbuntu(ScyllaInstallGeneric):
+
+    def __init__(self, sw_repo, mode='ci'):
+        super(ScyllaInstallUbuntu, self).__init__(sw_repo, mode)
+        self.sw_repo_dst = '/etc/apt/sources.list.d/scylla.list'
+
+
+class ScyllaInstallUbuntu1404(ScyllaInstallUbuntu):
+
+    def setup_ci(self):
+        process.run('curl %s -o %s' % (self.sw_repo_src, self.sw_repo_dst),
+                    shell=True, sudo=True)
+        self.sw_manager.upgrade()
+        return ['scylla-server', 'scylla-jmx', 'scylla-tools']
+
+    def setup_release(self):
+        repo_src_1_0 = 'http://downloads.scylladb.com/deb/ubuntu/scylla-1.0.list'
+        repo_src_1_1 = 'http://downloads.scylladb.com/deb/ubuntu/scylla-1.1.list'
+        repo_src_unstable = 'http://downloads.scylladb.com/deb/unstable/ubuntu/master/latest/scylla.list'
+        repo_src = repo_src_1_1
+        if self.mode == '1.0':
+            repo_src = repo_src_1_0
+        elif self.mode == '1.1':
+            repo_src = repo_src_1_1
+        elif self.mode == 'unstable':
+            repo_src = repo_src_unstable
+        process.run('curl %s -o %s' % (repo_src, self.sw_repo_dst),
+                    shell=True, sudo=True)
+        self.sw_manager.upgrade()
+        return ['scylla-server', 'scylla-jmx', 'scylla-tools']
+
+
+class ScyllaInstallUbuntu1604(ScyllaInstallUbuntu):
+
+    def setup_ci(self):
+        process.run('curl %s -o %s' % (self.sw_repo_src, self.sw_repo_dst),
+                    shell=True, sudo=True)
+        self.sw_manager.upgrade()
+        return ['scylla-server', 'scylla-jmx', 'scylla-tools']
+
+    def setup_release(self, release_type='1.1'):
+        raise NotImplementedError('Ubuntu 16.04 release packages coming up, '
+                                  'hold on tight...')
+
+
+class ScyllaInstallFedora(ScyllaInstallGeneric):
+
+    def __init__(self, sw_repo, mode='ci'):
+        super(ScyllaInstallFedora, self).__init__(sw_repo, mode)
+        self.sw_repo_dst = '/etc/yum.repos.d/scylla.repo'
+
+
+class ScyllaInstallFedora22(ScyllaInstallFedora):
+
+    def setup_ci(self):
+        process.run('curl %s -o %s' % (self.sw_repo_src, self.sw_repo_dst),
+                    shell=True, sudo=True)
+        self.sw_manager.upgrade()
+        return ['scylla-server', 'scylla-jmx', 'scylla-tools']
+
+    def setup_release(self):
+        repo_src_1_0 = 'http://downloads.scylladb.com/rpm/fedora/scylla-1.0.repo'
+        repo_src_1_1 = 'http://downloads.scylladb.com/rpm/fedora/scylla-1.1.repo'
+        repo_src_unstable = 'http://downloads.scylladb.com/rpm/unstable/fedora/master/latest/scylla.repo'
+        repo_src = repo_src_1_1
+        if self.mode == '1.0':
+            repo_src = repo_src_1_0
+        elif self.mode == '1.1':
+            repo_src = repo_src_1_1
+        elif self.mode == 'unstable':
+            repo_src = repo_src_unstable
+        process.run('curl %s -o %s' % (repo_src, self.sw_repo_dst),
+                    shell=True, sudo=True)
+        self.sw_manager.upgrade()
+        return ['scylla-server', 'scylla-jmx', 'scylla-tools']
+
+
+class ScyllaInstallCentOS(ScyllaInstallGeneric):
+
+    def __init__(self, sw_repo, mode='ci'):
+        super(ScyllaInstallCentOS, self).__init__(sw_repo, mode)
+        self.sw_repo_dst = '/etc/yum.repos.d/scylla.repo'
+
+    def _centos_remove_system_packages(self):
+        self.sw_manager.remove('boost-thread')
+        self.sw_manager.remove('boost-system')
+        self.sw_manager.remove('abrt')
+
+
+class ScyllaInstallCentOS7(ScyllaInstallCentOS):
+
+    def setup_ci(self):
+        self._centos_remove_system_packages()
+        process.run('curl %s -o %s' % (self.sw_repo_src, self.sw_repo_dst),
+                    shell=True, sudo=True)
+        self.sw_manager.upgrade()
+        return ['scylla-server', 'scylla-jmx', 'scylla-tools']
+
+    def setup_release(self):
+        self._centos_remove_system_packages()
+        repo_src_1_0 = 'http://downloads.scylladb.com/rpm/centos/scylla-1.0.repo'
+        repo_src_1_1 = 'http://downloads.scylladb.com/rpm/centos/scylla-1.1.repo'
+        repo_src_unstable = 'http://downloads.scylladb.com/rpm/unstable/centos/master/latest/scylla.repo'
+        repo_src = repo_src_1_1
+        if self.mode == '1.0':
+            repo_src = repo_src_1_0
+        elif self.mode == '1.1':
+            repo_src = repo_src_1_1
+        elif self.mode == 'unstable':
+            repo_src = repo_src_unstable
+        process.run('curl %s -o %s' % (repo_src, self.sw_repo_dst),
+                    shell=True, sudo=True)
+        self.sw_manager.upgrade()
+        return ['scylla-server', 'scylla-jmx', 'scylla-tools']
+
+
+class ScyllaInstallAMI(ScyllaInstallGeneric):
+
+    def run(self):
+        self.log.info("Testing AMI, let's just check if the DB is up...")
+        self.srv_manager.wait_services_up()
+
+
+class ScyllaArtifactSanity(Test):
+
+    """
+    Sanity check of the build artifacts (deb, rpm)
+
+    setup: Install artifacts (deb, rpm)
+    1) Run cassandra-stress
+    2) Run nodetool
+    """
+    setup_done_file = None
+    srv_manager = ScyllaServiceManager()
+
+    def get_setup_file_done(self):
+        tmpdir = os.path.dirname(self.workdir)
+        return os.path.join(tmpdir, 'scylla-setup-done')
 
     def scylla_setup(self):
-        self.base_url = 'https://s3.amazonaws.com/downloads.scylladb.com/'
-        self.scylla_yum_repo = '/etc/yum.repos.d/scylla.repo'
-        self.scylla_apt_repo = '/etc/apt/sources.list.d/scylla.list'
-        self.sw_repo = self.params.get('sw_repo', default=None)
-        self.sw_manager = software_manager.SoftwareManager()
-        self.srv_manager = None
+        # Let's start the logs thread before package install
+        self._log_collection_thread = threading.Thread(target=get_scylla_logs)
+        self._log_collection_thread.start()
+        sw_repo = self.params.get('sw_repo', default=None)
+        mode = self.params.get('mode', default='ci')
+        ami = self.params.get('ami', default=False) is True
+        if sw_repo is not None:
+            if sw_repo.strip() != 'EMPTY':
+                mode = 'ci'
 
         detected_distro = distro.detect()
         fedora_22 = (detected_distro.name.lower() == 'fedora' and
@@ -168,101 +285,33 @@ class ScyllaArtifactSanity(Test):
                         detected_distro.release == '04')
         centos_7 = (detected_distro.name.lower() == 'centos' and
                     detected_distro.version == '7')
-        pkgs = []
 
-        mode = 'release'
+        installer = None
 
-        if self.sw_repo is not None:
-            if self.sw_repo.strip() != 'EMPTY':
-                mode = 'ci'
-
-        ami = self.params.get('ami', default=False) is True
         if ami:
-            pkgs = self.setup_ami()
+            installer = ScyllaInstallAMI()
 
         elif ubuntu_14_04:
-            if mode == 'release':
-                pkgs = self.setup_ubuntu_14_04_release()
-            elif mode == 'ci':
-                pkgs = self.setup_ubuntu_14_04_ci()
+            installer = ScyllaInstallUbuntu1404(sw_repo=sw_repo, mode=mode)
 
         elif ubuntu_16_04:
-            if mode == 'ci':
-                pkgs = self.setup_ubuntu_16_04_ci()
+            installer = ScyllaInstallUbuntu1604(sw_repo=sw_repo, mode=mode)
 
         elif fedora_22:
-            if mode == 'release':
-                pkgs = self.setup_fedora_22_release()
-            elif mode == 'ci':
-                pkgs = self.setup_fedora_22_ci()
+            installer = ScyllaInstallFedora22(sw_repo=sw_repo, mode=mode)
 
         elif centos_7:
-            if mode == 'release':
-                pkgs = self.setup_centos_7_release()
-            elif mode == 'ci':
-                pkgs = self.setup_centos_7_ci()
+            installer = ScyllaInstallCentOS7(sw_repo=sw_repo, mode=mode)
 
         else:
             self.skip('Unsupported OS: %s' % detected_distro)
 
-        # Users are expected to install scylla on up to date distros.
-        # This might cause trouble from time to time, but it's better
-        # than pretending that distro updates can't break our install.
-        if not ami:
-            self.sw_manager.upgrade()
-        for pkg in pkgs:
-            if not self.sw_manager.install(pkg):
-                self.error('Package %s could not be installed '
-                           '(see logs for details)' %
-                           os.path.basename(pkg))
-
-        if not ami:
-            # Let's use very low/conservative io config numbers
-            # as a workaround for now.
-            # process.run('echo "SEASTAR_IO=\'--max-io-requests=4 --num-io-queues=1\'" | sudo tee /etc/scylla.d/io.conf', shell=True)
-            # process.run('touch /etc/scylla/io_configured')
-            process.run('/usr/lib/scylla/scylla_io_setup', shell=True)
-            self.start_services()
-
-        self.wait_services_up()
+        installer.run()
         os.mknod(self.get_setup_file_done())
 
     def setUp(self):
         if not os.path.isfile(self.get_setup_file_done()):
             self.scylla_setup()
-
-    def start_services(self):
-        srv_manager = service.ServiceManager()
-        for srv in self.services:
-            srv_manager.start(srv)
-        for srv in self.services:
-            if not srv_manager.status(srv):
-                if service.get_name_of_init() == 'systemd':
-                    process.run('journalctl -xe', ignore_status=True, verbose=True)
-                self.error('Failed to start service %s '
-                           '(see logs for details)' % srv)
-
-    def stop_services(self):
-        srv_manager = service.ServiceManager()
-        for srv in reversed(self.services):
-            srv_manager.stop(srv)
-        for srv in self.services:
-            if srv_manager.status(srv):
-                if service.get_name_of_init() == 'systemd':
-                    process.run('journalctl -xe', ignore_status=True, verbose=True)
-                self.error('Failed to stop service %s '
-                           '(see logs for details)' % srv)
-
-    def restart_services(self):
-        srv_manager = service.ServiceManager()
-        for srv in self.services:
-            srv_manager.restart(srv)
-        for srv in self.services:
-            if not srv_manager.status(srv):
-                if service.get_name_of_init() == 'systemd':
-                    process.run('journalctl -xe', ignore_status=True, verbose=True)
-                self.error('Failed to start service %s '
-                           '(see logs for details)' % srv)
 
     def run_cassandra_stress(self):
         def check_output(result):
@@ -282,48 +331,27 @@ class ScyllaArtifactSanity(Test):
         result_mixed = process.run(stress_mixed, shell=True)
         check_output(result_mixed)
 
-    def get_scylla_logs(self):
-        try:
-            journalctl_cmd = path.find_command('journalctl')
-            process.run('%s --unit scylla-io-setup.service' % journalctl_cmd,
-                        ignore_status=True)
-            process.run('%s --unit scylla-server.service' % journalctl_cmd,
-                        ignore_status=True)
-            process.run('%s --unit scylla-jmx.service' % journalctl_cmd,
-                        ignore_status=True)
-        except path.CmdNotFoundError:
-            process.run('grep scylla /var/log/syslog', ignore_status=True)
-
     def run_nodetool(self):
         nodetool_exec = path.find_command('nodetool')
         nodetool = '%s status' % nodetool_exec
         process.run(nodetool)
 
     def test_after_install(self):
-        try:
-            self.run_nodetool()
-            self.run_cassandra_stress()
-        finally:
-            self.get_scylla_logs()
+        self.run_nodetool()
+        self.run_cassandra_stress()
 
     def test_after_stop_start(self):
-        try:
-            self.stop_services()
-            self.start_services()
-            self.wait_services_up()
-            self.run_nodetool()
-            self.run_cassandra_stress()
-        finally:
-            self.get_scylla_logs()
+        self.srv_manager.stop_services()
+        self.srv_manager.start_services()
+        self.srv_manager.wait_services_up()
+        self.run_nodetool()
+        self.run_cassandra_stress()
 
     def test_after_restart(self):
-        try:
-            self.restart_services()
-            self.wait_services_up()
-            self.run_nodetool()
-            self.run_cassandra_stress()
-        finally:
-            self.get_scylla_logs()
+        self.srv_manager.restart_services()
+        self.srv_manager.wait_services_up()
+        self.run_nodetool()
+        self.run_cassandra_stress()
 
 if __name__ == '__main__':
     main()

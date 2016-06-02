@@ -1,2 +1,8 @@
+# If testing the Scylla AMI, ami should be set to 'true'
 ami: false
-sw_repo: https://s3.amazonaws.com/downloads.scylladb.com/deb/unstable/ubuntu/branch-0.16/54/scylla.list
+# Testing mode for non AMI. As of this writing, it can be
+# '1.0', '1.1', 'unstable', 'ci'. If omitted, defaults to 'ci'
+mode: 'ci'
+# If set to a non empty value different than 'EMPTY', this will
+# automatically set the mode to 'ci'
+sw_repo: https://s3.amazonaws.com/downloads.scylladb.com/deb/unstable/xenial/c7953897d171667bdfdea603d9a9946e34164a2e-c6edab59907787c324616fb9320204a10cbef86e-9a7893740e8e5b9dd5c3321b51b78f4d86aa9aec/9/scylla.list
