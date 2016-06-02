@@ -134,8 +134,8 @@ class ScyllaInstallUbuntu(ScyllaInstallGeneric):
 class ScyllaInstallUbuntu1404(ScyllaInstallUbuntu):
 
     def setup_ci(self):
-        process.run('curl %s -o %s' % (self.sw_repo_src, self.sw_repo_dst),
-                    shell=True, sudo=True)
+        process.run('sudo curl %s -o %s' % (self.sw_repo_src, self.sw_repo_dst),
+                    shell=True)
         self.sw_manager.upgrade()
         return ['scylla-server', 'scylla-jmx', 'scylla-tools']
 
@@ -150,8 +150,8 @@ class ScyllaInstallUbuntu1404(ScyllaInstallUbuntu):
             repo_src = repo_src_1_1
         elif self.mode == 'unstable':
             repo_src = repo_src_unstable
-        process.run('curl %s -o %s' % (repo_src, self.sw_repo_dst),
-                    shell=True, sudo=True)
+        process.run('sudo curl %s -o %s' % (repo_src, self.sw_repo_dst),
+                    shell=True)
         self.sw_manager.upgrade()
         return ['scylla-server', 'scylla-jmx', 'scylla-tools']
 
@@ -159,8 +159,8 @@ class ScyllaInstallUbuntu1404(ScyllaInstallUbuntu):
 class ScyllaInstallUbuntu1604(ScyllaInstallUbuntu):
 
     def setup_ci(self):
-        process.run('curl %s -o %s' % (self.sw_repo_src, self.sw_repo_dst),
-                    shell=True, sudo=True)
+        process.run('sudo curl %s -o %s' % (self.sw_repo_src, self.sw_repo_dst),
+                    shell=True)
         self.sw_manager.upgrade()
         return ['scylla-server', 'scylla-jmx', 'scylla-tools']
 
@@ -179,8 +179,8 @@ class ScyllaInstallFedora(ScyllaInstallGeneric):
 class ScyllaInstallFedora22(ScyllaInstallFedora):
 
     def setup_ci(self):
-        process.run('curl %s -o %s' % (self.sw_repo_src, self.sw_repo_dst),
-                    shell=True, sudo=True)
+        process.run('sudo curl %s -o %s' % (self.sw_repo_src, self.sw_repo_dst),
+                    shell=True)
         self.sw_manager.upgrade()
         return ['scylla-server', 'scylla-jmx', 'scylla-tools']
 
@@ -195,8 +195,8 @@ class ScyllaInstallFedora22(ScyllaInstallFedora):
             repo_src = repo_src_1_1
         elif self.mode == 'unstable':
             repo_src = repo_src_unstable
-        process.run('curl %s -o %s' % (repo_src, self.sw_repo_dst),
-                    shell=True, sudo=True)
+        process.run('sudo curl %s -o %s' % (repo_src, self.sw_repo_dst),
+                    shell=True)
         self.sw_manager.upgrade()
         return ['scylla-server', 'scylla-jmx', 'scylla-tools']
 
@@ -217,8 +217,8 @@ class ScyllaInstallCentOS7(ScyllaInstallCentOS):
 
     def setup_ci(self):
         self._centos_remove_system_packages()
-        process.run('curl %s -o %s' % (self.sw_repo_src, self.sw_repo_dst),
-                    shell=True, sudo=True)
+        process.run('sudo curl %s -o %s' % (self.sw_repo_src, self.sw_repo_dst),
+                    shell=True)
         self.sw_manager.upgrade()
         return ['scylla-server', 'scylla-jmx', 'scylla-tools']
 
@@ -234,8 +234,8 @@ class ScyllaInstallCentOS7(ScyllaInstallCentOS):
             repo_src = repo_src_1_1
         elif self.mode == 'unstable':
             repo_src = repo_src_unstable
-        process.run('curl %s -o %s' % (repo_src, self.sw_repo_dst),
-                    shell=True, sudo=True)
+        process.run('sudo curl %s -o %s' % (repo_src, self.sw_repo_dst),
+                    shell=True)
         self.sw_manager.upgrade()
         return ['scylla-server', 'scylla-jmx', 'scylla-tools']
 
