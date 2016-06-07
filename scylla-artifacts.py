@@ -40,7 +40,8 @@ def get_scylla_logs():
                     '-u scylla-jmx.service' % journalctl_cmd,
                     verbose=True, ignore_status=True)
     except path.CmdNotFoundError:
-        process.run('tail -f /var/log/syslog | grep scylla', ignore_status=True)
+        process.run('tail -f /var/log/syslog | grep scylla', shell=True,
+                    ignore_status=True)
 
 
 class ScyllaServiceManager(object):
@@ -112,14 +113,19 @@ class ScyllaInstallGeneric(object):
 
     def run(self):
         self.sw_manager.upgrade()
-        get_packages = getattr(self, 'setup_%s' % self.mode)
+        if self.mode == 'ci':
+            get_packages = self.setup_ci
+        else:
+            get_packages = self.setup_release
         pkgs = get_packages()
         for pkg in pkgs:
             if not self.sw_manager.install(pkg):
                 e_msg = ('Package %s could not be installed '
                          '(see logs for details)' % os.path.basename(pkg))
                 raise InstallPackageError(e_msg)
-        process.run('/usr/lib/scylla/scylla_io_setup', shell=True)
+        process.run('yes "yes" | /usr/lib/scylla/scylla_setup '
+                    '--nic eth0 --no-raid-setup --no-bootparam-setup',
+                    shell=True)
         self.srv_manager.start_services()
         self.srv_manager.wait_services_up()
 
