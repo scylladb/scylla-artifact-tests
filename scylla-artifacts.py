@@ -40,7 +40,8 @@ def get_scylla_logs():
                     '-u scylla-jmx.service' % journalctl_cmd,
                     verbose=True, ignore_status=True)
     except path.CmdNotFoundError:
-        process.run('tail -f /var/log/syslog | grep scylla', ignore_status=True)
+        process.run('tail -f /var/log/syslog | grep scylla', shell=True,
+                    ignore_status=True)
 
 
 class ScyllaServiceManager(object):
