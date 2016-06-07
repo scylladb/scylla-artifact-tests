@@ -113,7 +113,10 @@ class ScyllaInstallGeneric(object):
 
     def run(self):
         self.sw_manager.upgrade()
-        get_packages = getattr(self, 'setup_%s' % self.mode)
+        if self.mode == 'ci':
+            get_packages = self.setup_ci
+        else:
+            get_packages = self.setup_release
         pkgs = get_packages()
         for pkg in pkgs:
             if not self.sw_manager.install(pkg):
