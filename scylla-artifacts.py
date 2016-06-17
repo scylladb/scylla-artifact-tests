@@ -1,18 +1,115 @@
 #!/usr/bin/python
 
 import os
+import re
 import logging
 import threading
 
 from avocado import Test
 from avocado import main
 from avocado.utils import distro
-from avocado.utils import software_manager
 from avocado.utils import process
 from avocado.utils import path
 from avocado.utils import service
 from avocado.utils import wait
 from avocado.utils import network
+
+from avocado.utils.software_manager import AptBackend
+from avocado.utils.software_manager import YumBackend
+from avocado.utils.software_manager import DnfBackend
+from avocado.utils.software_manager import ZypperBackend
+from avocado.utils.software_manager import SystemInspector
+
+SCRIPTLET_FAILURE_LIST = []
+
+
+def _search_scriptlet_failure(result):
+    global SCRIPTLET_FAILURE_LIST
+    output = result.stdout + result.stderr
+    failure_pattern = 'scriptlet failure in rpm package scylla.*'
+    if re.search(failure_pattern, output):
+        pkgs = []
+        occurrences = re.findall(failure_pattern, output)
+        for occurrence in occurrences:
+            pkg = occurrence.split()[-1]
+            pkgs.append(pkg)
+            SCRIPTLET_FAILURE_LIST.append(pkg)
+
+
+class ScyllaYumBackend(YumBackend):
+
+    def install(self, name):
+        """
+        Installs package [name]. Handles local installs.
+        """
+        i_cmd = self.base_command + ' ' + 'install' + ' ' + name
+
+        try:
+            _search_scriptlet_failure(process.run(i_cmd, sudo=True))
+            return True
+        except process.CmdError:
+            return False
+
+
+class ScyllaDnfBackend(DnfBackend):
+
+    def install(self, name):
+        """
+        Installs package [name]. Handles local installs.
+        """
+        i_cmd = self.base_command + ' ' + 'install' + ' ' + name
+
+        try:
+            _search_scriptlet_failure(process.run(i_cmd, sudo=True))
+            return True
+        except process.CmdError:
+            return False
+
+
+class ScyllaSoftwareManager(object):
+
+    """
+    Package management abstraction layer.
+
+    It supports a set of common package operations for testing purposes, and it
+    uses the concept of a backend, a helper class that implements the set of
+    operations of a given package management tool.
+    """
+
+    def __init__(self):
+        """
+        Lazily instantiate the object
+        """
+        self.initialized = False
+        self.backend = None
+        self.lowlevel_base_command = None
+        self.base_command = None
+        self.pm_version = None
+
+    def _init_on_demand(self):
+        """
+        Determines the best supported package management system for the given
+        operating system running and initializes the appropriate backend.
+        """
+        if not self.initialized:
+            inspector = SystemInspector()
+            backend_type = inspector.get_package_management()
+            backend_mapping = {'apt-get': AptBackend,
+                               'yum': ScyllaYumBackend,
+                               'dnf': ScyllaDnfBackend,
+                               'zypper': ZypperBackend}
+
+            if backend_type not in backend_mapping.keys():
+                raise NotImplementedError('Unimplemented package management '
+                                          'system: %s.' % backend_type)
+
+            backend = backend_mapping[backend_type]
+            self.backend = backend()
+            self.initialized = True
+
+    def __getattr__(self, name):
+        self._init_on_demand()
+        return self.backend.__getattribute__(name)
 
 
 class StartServiceError(Exception):
@@ -105,7 +202,7 @@ class ScyllaInstallGeneric(object):
     def __init__(self, sw_repo=None, mode='ci'):
         self.base_url = 'https://s3.amazonaws.com/downloads.scylladb.com/'
         self.mode = mode
-        self.sw_manager = software_manager.SoftwareManager()
+        self.sw_manager = ScyllaSoftwareManager()
         self.sw_repo_src = sw_repo
         self.sw_repo_dst = None
         self.log = logging.getLogger('avocado.test')
@@ -366,6 +463,9 @@ class ScyllaArtifactSanity(Test):
     def test_after_install(self):
         self.run_nodetool()
         self.run_cassandra_stress()
+        if SCRIPTLET_FAILURE_LIST:
+            self.fail('RPM scriptlet failure reported for package(s): %s' %
+                      ",".join(SCRIPTLET_FAILURE_LIST))
 
     def test_after_stop_start(self):
         self.srv_manager.stop_services()
