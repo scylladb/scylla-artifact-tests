@@ -220,7 +220,10 @@ class ScyllaInstallGeneric(object):
                 e_msg = ('Package %s could not be installed '
                          '(see logs for details)' % os.path.basename(pkg))
                 raise InstallPackageError(e_msg)
-        process.run('/usr/lib/scylla/scylla_io_setup', shell=True)
+        if os.path.isfile('/usr/lib/scylla/scylla_setup'):
+            process.run('/usr/lib/scylla/scylla_setup --nic eth0 --no-raid-setup', shell=True)
+        elif os.path.isfile('/usr/lib/scylla/scylla_io_setup'):
+            process.run('/usr/lib/scylla/scylla_io_setup', shell=True)
         self.srv_manager.start_services()
         self.srv_manager.wait_services_up()
 
