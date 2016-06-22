@@ -143,13 +143,15 @@ def get_scylla_logs():
 
 class ScyllaServiceManager(object):
 
-    def __init__(self):
+    def __init__(self, mode='docker'):
         self.services = ['scylla-server', 'scylla-jmx']
+        self.mode = mode
 
     def _scylla_service_is_up(self):
-        srv_manager = service.ServiceManager()
-        for srv in self.services:
-            srv_manager.status(srv)
+        if self.mode != 'docker':
+            srv_manager = service.ServiceManager()
+            for srv in self.services:
+                srv_manager.status(srv)
         return not network.is_port_free(9042, 'localhost')
 
     def wait_services_up(self):
@@ -161,40 +163,45 @@ class ScyllaServiceManager(object):
             raise StartServiceError(e_msg)
 
     def start_services(self):
-        srv_manager = service.ServiceManager()
-        for srv in self.services:
-            srv_manager.start(srv)
-        for srv in self.services:
-            if not srv_manager.status(srv):
-                if service.get_name_of_init() == 'systemd':
-                    process.run('journalctl -xe', ignore_status=True, verbose=True)
-                e_msg = ('Failed to start service %s '
-                         '(see logs for details)' % srv)
-                raise StartServiceError(e_msg)
+        if self.mode != 'docker':
+            srv_manager = service.ServiceManager()
+            for srv in self.services:
+                srv_manager.start(srv)
+            for srv in self.services:
+                if not srv_manager.status(srv):
+                    if service.get_name_of_init() == 'systemd':
+                        process.run('journalctl -xe', ignore_status=True,
+                                    verbose=True)
+                    e_msg = ('Failed to start service %s '
+                             '(see logs for details)' % srv)
+                    raise StartServiceError(e_msg)
 
     def stop_services(self):
-        srv_manager = service.ServiceManager()
-        for srv in reversed(self.services):
-            srv_manager.stop(srv)
-        for srv in self.services:
-            if srv_manager.status(srv):
-                if service.get_name_of_init() == 'systemd':
-                    process.run('journalctl -xe', ignore_status=True, verbose=True)
-                e_msg = ('Failed to stop service %s '
-                         '(see logs for details)' % srv)
-                raise StopServiceError(e_msg)
+        if self.mode != 'docker':
+            srv_manager = service.ServiceManager()
+            for srv in reversed(self.services):
+                srv_manager.stop(srv)
+            for srv in self.services:
+                if srv_manager.status(srv):
+                    if service.get_name_of_init() == 'systemd':
+                        process.run('journalctl -xe', ignore_status=True,
+                                    verbose=True)
+                    e_msg = ('Failed to stop service %s '
+                             '(see logs for details)' % srv)
+                    raise StopServiceError(e_msg)
 
     def restart_services(self):
-        srv_manager = service.ServiceManager()
-        for srv in self.services:
-            srv_manager.restart(srv)
-        for srv in self.services:
-            if not srv_manager.status(srv):
-                if service.get_name_of_init() == 'systemd':
-                    process.run('journalctl -xe', ignore_status=True, verbose=True)
-                e_msg = ('Failed to restart service %s '
-                         '(see logs for details)' % srv)
-                raise RestartServiceError(e_msg)
+        if self.mode != 'docker':
+            srv_manager = service.ServiceManager()
+            for srv in self.services:
+                srv_manager.restart(srv)
+            for srv in self.services:
+                if not srv_manager.status(srv):
+                    if service.get_name_of_init() == 'systemd':
+                        process.run('journalctl -xe', ignore_status=True, verbose=True)
+                    e_msg = ('Failed to restart service %s '
+                             '(see logs for details)' % srv)
+                    raise RestartServiceError(e_msg)
 
 
 class ScyllaInstallGeneric(object):
@@ -374,6 +381,13 @@ class ScyllaInstallAMI(ScyllaInstallGeneric):
         self.srv_manager.wait_services_up()
 
 
+class ScyllaInstallDocker(ScyllaInstallGeneric):
+
+    def run(self):
+        self.log.info("Testing Docker, let's just check if the DB is up...")
+        self.srv_manager.wait_services_up()
+
+
 class ScyllaArtifactSanity(Test):
 
     """
@@ -384,7 +398,6 @@ class ScyllaArtifactSanity(Test):
     2) Run nodetool
     """
     setup_done_file = None
-    srv_manager = ScyllaServiceManager()
 
     def get_setup_file_done(self):
         tmpdir = os.path.dirname(self.workdir)
@@ -397,10 +410,12 @@ class ScyllaArtifactSanity(Test):
         sw_repo = self.params.get('sw_repo', default=None)
         mode = self.params.get('mode', default='ci')
         ami = self.params.get('ami', default=False) is True
+        docker = self.params.get('docker', default=False) is True
         if sw_repo is not None:
             if sw_repo.strip() != 'EMPTY':
                 mode = 'ci'
 
+        self.mode = mode
         detected_distro = distro.detect()
         fedora_22 = (detected_distro.name.lower() == 'fedora' and
                      detected_distro.version == '22')
@@ -418,17 +433,20 @@ class ScyllaArtifactSanity(Test):
         if ami:
             installer = ScyllaInstallAMI()
 
+        elif docker:
+            installer = ScyllaInstallDocker()
+
         elif ubuntu_14_04:
-            installer = ScyllaInstallUbuntu1404(sw_repo=sw_repo, mode=mode)
+            installer = ScyllaInstallUbuntu1404(sw_repo=sw_repo, mode=self.mode)
 
         elif ubuntu_16_04:
-            installer = ScyllaInstallUbuntu1604(sw_repo=sw_repo, mode=mode)
+            installer = ScyllaInstallUbuntu1604(sw_repo=sw_repo, mode=self.mode)
 
         elif fedora_22:
-            installer = ScyllaInstallFedora22(sw_repo=sw_repo, mode=mode)
+            installer = ScyllaInstallFedora22(sw_repo=sw_repo, mode=self.mode)
 
         elif centos_7:
-            installer = ScyllaInstallCentOS7(sw_repo=sw_repo, mode=mode)
+            installer = ScyllaInstallCentOS7(sw_repo=sw_repo, mode=self.mode)
 
         else:
             self.skip('Unsupported OS: %s' % detected_distro)
@@ -471,15 +489,17 @@ class ScyllaArtifactSanity(Test):
                       ",".join(SCRIPTLET_FAILURE_LIST))
 
     def test_after_stop_start(self):
-        self.srv_manager.stop_services()
-        self.srv_manager.start_services()
-        self.srv_manager.wait_services_up()
+        srv_manager = ScyllaServiceManager(mode=self.mode)
+        srv_manager.stop_services()
+        srv_manager.start_services()
+        srv_manager.wait_services_up()
         self.run_nodetool()
         self.run_cassandra_stress()
 
     def test_after_restart(self):
-        self.srv_manager.restart_services()
-        self.srv_manager.wait_services_up()
+        srv_manager = ScyllaServiceManager(mode=self.mode)
+        srv_manager.restart_services()
+        srv_manager.wait_services_up()
         self.run_nodetool()
         self.run_cassandra_stress()
 
