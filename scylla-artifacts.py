@@ -66,6 +66,45 @@ class ScyllaDnfBackend(DnfBackend):
             return False
 
 
+class ScyllaAptBackend(AptBackend):
+
+    def upgrade(self, name=None):
+        """
+        Upgrade all packages of the system with eventual new versions.
+
+        Optionally, upgrade individual packages.
+
+        :param name: optional parameter wildcard spec to upgrade
+        :type name: str
+        """
+        def update_pkg_list():
+            ud_command = 'update'
+            ud_cmd = self.base_command + ' ' + ud_command
+            try:
+                process.system(ud_cmd)
+                return True
+            except process.CmdError:
+                return False
+
+        wait.wait_for(update_pkg_list, timeout=300, step=30,
+                      text="Wait until package list is up to date...")
+
+        if name:
+            up_command = 'install --only-upgrade'
+            up_cmd = " ".join([self.base_command, self.dpkg_force_confdef,
+                               up_command, name])
+        else:
+            up_command = 'upgrade'
+            up_cmd = " ".join([self.base_command, self.dpkg_force_confdef,
+                               up_command])
+
+        try:
+            process.system(up_cmd, shell=True, sudo=True)
+            return True
+        except process.CmdError:
+            return False
+
+
 class ScyllaSoftwareManager(object):
 
     """
@@ -94,7 +133,7 @@ class ScyllaSoftwareManager(object):
         if not self.initialized:
             inspector = SystemInspector()
             backend_type = inspector.get_package_management()
-            backend_mapping = {'apt-get': AptBackend,
+            backend_mapping = {'apt-get': ScyllaAptBackend,
                                'yum': ScyllaYumBackend,
                                'dnf': ScyllaDnfBackend,
                                'zypper': ZypperBackend}
