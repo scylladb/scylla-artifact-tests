@@ -142,23 +142,31 @@ class ScyllaInstallUbuntu1404(ScyllaInstallUbuntu):
         process.run('sudo curl %s -o %s' % (self.sw_repo_src, self.sw_repo_dst),
                     shell=True)
         self.sw_manager.upgrade()
-        return ['scylla-server', 'scylla-jmx', 'scylla-tools']
+        return ['scylla']
 
     def setup_release(self):
         repo_src_1_0 = 'http://downloads.scylladb.com/deb/ubuntu/scylla-1.0.list'
         repo_src_1_1 = 'http://downloads.scylladb.com/deb/ubuntu/scylla-1.1.list'
+        repo_src_1_2 = 'http://downloads.scylladb.com/deb/ubuntu/scylla-1.2.list'
         repo_src_unstable = 'http://downloads.scylladb.com/deb/unstable/ubuntu/master/latest/scylla.list'
         repo_src = repo_src_1_1
+        pkg_list = []
         if self.mode == '1.0':
             repo_src = repo_src_1_0
+            pkg_list = ['scylla-server', 'scylla-jmx', 'scylla-tools']
         elif self.mode == '1.1':
             repo_src = repo_src_1_1
+            pkg_list = ['scylla-server', 'scylla-jmx', 'scylla-tools']
+        elif self.mode == '1.2':
+            repo_src = repo_src_1_2
+            pkg_list = ['scylla']
         elif self.mode == 'unstable':
             repo_src = repo_src_unstable
+            pkg_list = ['scylla']
         process.run('sudo curl %s -o %s' % (repo_src, self.sw_repo_dst),
                     shell=True)
         self.sw_manager.upgrade()
-        return ['scylla-server', 'scylla-jmx', 'scylla-tools']
+        return pkg_list
 
 
 class ScyllaInstallUbuntu1604(ScyllaInstallUbuntu):
@@ -167,9 +175,9 @@ class ScyllaInstallUbuntu1604(ScyllaInstallUbuntu):
         process.run('sudo curl %s -o %s' % (self.sw_repo_src, self.sw_repo_dst),
                     shell=True)
         self.sw_manager.upgrade()
-        return ['scylla-server', 'scylla-jmx', 'scylla-tools']
+        return ['scylla']
 
-    def setup_release(self, release_type='1.1'):
+    def setup_release(self):
         raise NotImplementedError('Ubuntu 16.04 release packages coming up, '
                                   'hold on tight...')
 
@@ -187,23 +195,31 @@ class ScyllaInstallFedora22(ScyllaInstallFedora):
         process.run('sudo curl %s -o %s' % (self.sw_repo_src, self.sw_repo_dst),
                     shell=True)
         self.sw_manager.upgrade()
-        return ['scylla-server', 'scylla-jmx', 'scylla-tools']
+        return ['scylla']
 
     def setup_release(self):
         repo_src_1_0 = 'http://downloads.scylladb.com/rpm/fedora/scylla-1.0.repo'
         repo_src_1_1 = 'http://downloads.scylladb.com/rpm/fedora/scylla-1.1.repo'
+        repo_src_1_2 = 'http://downloads.scylladb.com/rpm/fedora/scylla-1.2.repo'
         repo_src_unstable = 'http://downloads.scylladb.com/rpm/unstable/fedora/master/latest/scylla.repo'
         repo_src = repo_src_1_1
+        pkg_list = []
         if self.mode == '1.0':
             repo_src = repo_src_1_0
+            pkg_list = ['scylla-server', 'scylla-jmx', 'scylla-tools']
         elif self.mode == '1.1':
             repo_src = repo_src_1_1
+            pkg_list = ['scylla-server', 'scylla-jmx', 'scylla-tools']
+        elif self.mode == '1.2':
+            repo_src = repo_src_1_2
+            pkg_list = ['scylla']
         elif self.mode == 'unstable':
             repo_src = repo_src_unstable
+            pkg_list = ['scylla']
         process.run('sudo curl %s -o %s' % (repo_src, self.sw_repo_dst),
                     shell=True)
         self.sw_manager.upgrade()
-        return ['scylla-server', 'scylla-jmx', 'scylla-tools']
+        return pkg_list
 
 
 class ScyllaInstallCentOS(ScyllaInstallGeneric):
@@ -225,24 +241,31 @@ class ScyllaInstallCentOS7(ScyllaInstallCentOS):
         process.run('sudo curl %s -o %s' % (self.sw_repo_src, self.sw_repo_dst),
                     shell=True)
         self.sw_manager.upgrade()
-        return ['scylla-server', 'scylla-jmx', 'scylla-tools']
+        return ['scylla']
 
     def setup_release(self):
         self._centos_remove_system_packages()
         repo_src_1_0 = 'http://downloads.scylladb.com/rpm/centos/scylla-1.0.repo'
         repo_src_1_1 = 'http://downloads.scylladb.com/rpm/centos/scylla-1.1.repo'
+        repo_src_1_2 = 'http://downloads.scylladb.com/rpm/centos/scylla-1.2.repo'
         repo_src_unstable = 'http://downloads.scylladb.com/rpm/unstable/centos/master/latest/scylla.repo'
         repo_src = repo_src_1_1
+        pkg_list = []
         if self.mode == '1.0':
             repo_src = repo_src_1_0
+            pkg_list = ['scylla-server', 'scylla-jmx', 'scylla-tools']
         elif self.mode == '1.1':
             repo_src = repo_src_1_1
+            pkg_list = ['scylla-server', 'scylla-jmx', 'scylla-tools']
+        elif self.mode == '1.2':
+            repo_src = repo_src_1_2
+            pkg_list = ['scylla']
         elif self.mode == 'unstable':
             repo_src = repo_src_unstable
         process.run('sudo curl %s -o %s' % (repo_src, self.sw_repo_dst),
                     shell=True)
         self.sw_manager.upgrade()
-        return ['scylla-server', 'scylla-jmx', 'scylla-tools']
+        return pkg_list
 
 
 class ScyllaInstallAMI(ScyllaInstallGeneric):
