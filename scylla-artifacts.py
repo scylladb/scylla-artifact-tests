@@ -216,7 +216,8 @@ class ScyllaInstallGeneric(object):
         self.srv_manager = ScyllaServiceManager()
 
     def run(self):
-        self.sw_manager.upgrade()
+        wait.wait_for(self.sw_manager.upgrade, timeout=300, step=30,
+                      text="Wait until system is up to date...")
         if self.mode == 'ci':
             get_packages = self.setup_ci
         else:
