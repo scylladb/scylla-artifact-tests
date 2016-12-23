@@ -396,6 +396,9 @@ class ScyllaInstallCentOS7(ScyllaInstallCentOS):
         repo_src_1_0 = 'http://downloads.scylladb.com/rpm/centos/scylla-1.0.repo'
         repo_src_1_1 = 'http://downloads.scylladb.com/rpm/centos/scylla-1.1.repo'
         repo_src_1_2 = 'http://downloads.scylladb.com/rpm/centos/scylla-1.2.repo'
+        repo_src_1_3 = 'http://downloads.scylladb.com/rpm/centos/scylla-1.3.repo'
+        repo_src_1_4 = 'http://downloads.scylladb.com/rpm/centos/scylla-1.4.repo'
+        repo_src_1_5 = 'http://downloads.scylladb.com/rpm/centos/scylla-1.5.repo'
         repo_src_unstable = 'http://downloads.scylladb.com/rpm/unstable/centos/master/latest/scylla.repo'
         repo_src = repo_src_1_1
         pkg_list = []
@@ -407,6 +410,15 @@ class ScyllaInstallCentOS7(ScyllaInstallCentOS):
             pkg_list = ['scylla-server', 'scylla-jmx', 'scylla-tools']
         elif self.mode == '1.2':
             repo_src = repo_src_1_2
+            pkg_list = ['scylla']
+        elif self.mode == '1.3':
+            repo_src = repo_src_1_3
+            pkg_list = ['scylla']
+        elif self.mode == '1.4':
+            repo_src = repo_src_1_4
+            pkg_list = ['scylla']
+        elif self.mode == '1.5':
+            repo_src = repo_src_1_5
             pkg_list = ['scylla']
         elif self.mode == 'unstable':
             repo_src = repo_src_unstable
