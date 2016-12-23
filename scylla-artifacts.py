@@ -283,7 +283,7 @@ class ScyllaInstallUbuntu1404(ScyllaInstallUbuntu):
     def setup_release(self):
         repo_src_1_0 = 'http://downloads.scylladb.com/deb/ubuntu/scylla-1.0.list'
         repo_src_1_1 = 'http://downloads.scylladb.com/deb/ubuntu/scylla-1.1.list'
-        repo_src_1_2 = 'http://downloads.scylladb.com/deb/ubuntu/scylla-1.2.list'
+        repo_src_1_2 = 'http://downloads.scylladb.com/deb/ubuntu/scylla-1.2-trusty.list'
         repo_src_unstable = 'http://downloads.scylladb.com/deb/unstable/ubuntu/master/latest/scylla.list'
         repo_src = repo_src_1_1
         pkg_list = []
