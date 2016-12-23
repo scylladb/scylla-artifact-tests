@@ -288,8 +288,8 @@ class ScyllaInstallUbuntu1404(ScyllaInstallUbuntu):
         repo_src_1_4 = 'http://downloads.scylladb.com/deb/ubuntu/scylla-1.4-trusty.list'
         repo_src_1_5 = 'http://downloads.scylladb.com/deb/ubuntu/scylla-1.5-trusty.list'
         repo_src_unstable = 'http://downloads.scylladb.com/deb/unstable/ubuntu/master/latest/scylla.list'
-        repo_src = repo_src_1_1
-        pkg_list = []
+        repo_src = repo_src_1_5
+        pkg_list = ['scylla']
         if self.mode == '1.0':
             repo_src = repo_src_1_0
             pkg_list = ['scylla-server', 'scylla-jmx', 'scylla-tools']
@@ -400,8 +400,8 @@ class ScyllaInstallCentOS7(ScyllaInstallCentOS):
         repo_src_1_4 = 'http://downloads.scylladb.com/rpm/centos/scylla-1.4.repo'
         repo_src_1_5 = 'http://downloads.scylladb.com/rpm/centos/scylla-1.5.repo'
         repo_src_unstable = 'http://downloads.scylladb.com/rpm/unstable/centos/master/latest/scylla.repo'
-        repo_src = repo_src_1_1
-        pkg_list = []
+        repo_src = repo_src_1_5
+        pkg_list = ['scylla']
         if self.mode == '1.0':
             repo_src = repo_src_1_0
             pkg_list = ['scylla-server', 'scylla-jmx', 'scylla-tools']
