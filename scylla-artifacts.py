@@ -284,6 +284,9 @@ class ScyllaInstallUbuntu1404(ScyllaInstallUbuntu):
         repo_src_1_0 = 'http://downloads.scylladb.com/deb/ubuntu/scylla-1.0.list'
         repo_src_1_1 = 'http://downloads.scylladb.com/deb/ubuntu/scylla-1.1.list'
         repo_src_1_2 = 'http://downloads.scylladb.com/deb/ubuntu/scylla-1.2-trusty.list'
+        repo_src_1_3 = 'http://downloads.scylladb.com/deb/ubuntu/scylla-1.3-trusty.list'
+        repo_src_1_4 = 'http://downloads.scylladb.com/deb/ubuntu/scylla-1.4-trusty.list'
+        repo_src_1_5 = 'http://downloads.scylladb.com/deb/ubuntu/scylla-1.5-trusty.list'
         repo_src_unstable = 'http://downloads.scylladb.com/deb/unstable/ubuntu/master/latest/scylla.list'
         repo_src = repo_src_1_1
         pkg_list = []
@@ -295,6 +298,15 @@ class ScyllaInstallUbuntu1404(ScyllaInstallUbuntu):
             pkg_list = ['scylla-server', 'scylla-jmx', 'scylla-tools']
         elif self.mode == '1.2':
             repo_src = repo_src_1_2
+            pkg_list = ['scylla']
+        elif self.mode == '1.3':
+            repo_src = repo_src_1_3
+            pkg_list = ['scylla']
+        elif self.mode == '1.4':
+            repo_src = repo_src_1_4
+            pkg_list = ['scylla']
+        elif self.mode == '1.5':
+            repo_src = repo_src_1_5
             pkg_list = ['scylla']
         elif self.mode == 'unstable':
             repo_src = repo_src_unstable
