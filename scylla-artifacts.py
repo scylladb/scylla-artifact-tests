@@ -262,6 +262,9 @@ class ScyllaInstallGeneric(object):
                 raise InstallPackageError(e_msg)
         process.run('/usr/lib/scylla/scylla_io_setup', shell=True)
 
+        self.srv_manager.start_services()
+        self.srv_manager.wait_services_up()
+
         uuid_path = '/var/lib/scylla-housekeeping/housekeeping.uuid'
         report_status_path = '/etc/scylla.d/housekeeping.uuid.reported'
         cmd = 'curl "https://i6a5h9l1kl.execute-api.us-east-1.amazonaws.com/prod/check_version?uu=%s&mark=scylla"'
@@ -271,8 +274,6 @@ class ScyllaInstallGeneric(object):
                 uuid = uuid_file.read().strip()
             process.run(cmd % uuid, shell=True, verbose=True)
             process.run('sudo touch %s' % report_status_path)
-        self.srv_manager.start_services()
-        self.srv_manager.wait_services_up()
 
 
 class ScyllaInstallUbuntu(ScyllaInstallGeneric):
