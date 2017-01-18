@@ -266,14 +266,13 @@ class ScyllaInstallGeneric(object):
         self.srv_manager.wait_services_up()
 
         uuid_path = '/var/lib/scylla-housekeeping/housekeeping.uuid'
-        report_status_path = '/etc/scylla.d/housekeeping.uuid.reported'
+        mark_path = '/var/lib/scylla-housekeeping/housekeeping.uuid.marked'
         cmd = 'curl "https://i6a5h9l1kl.execute-api.us-east-1.amazonaws.com/prod/check_version?uu=%s&mark=scylla"'
-        if os.path.exists(uuid_path) and not os.path.exists(
-                                             report_status_path):
+        if os.path.exists(uuid_path) and not os.path.exists(mark_path):
             with open(uuid_path) as uuid_file:
                 uuid = uuid_file.read().strip()
             process.run(cmd % uuid, shell=True, verbose=True)
-            process.run('sudo touch %s' % report_status_path)
+            process.run('sudo -u scylla touch %s' % mark_path, verbose=True)
 
 
 class ScyllaInstallUbuntu(ScyllaInstallGeneric):
