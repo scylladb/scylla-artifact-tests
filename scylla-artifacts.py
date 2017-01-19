@@ -262,17 +262,21 @@ class ScyllaInstallGeneric(object):
                 raise InstallPackageError(e_msg)
         process.run('/usr/lib/scylla/scylla_io_setup', shell=True)
 
-        uuid_path = '/var/lib/scylla-housekeeping/housekeeping.uuid'
-        report_status_path = '/etc/scylla.d/housekeeping.uuid.reported'
-        cmd = 'curl "https://i6a5h9l1kl.execute-api.us-east-1.amazonaws.com/prod/check_version?uu=%s&mark=scylla"'
-        if os.path.exists(uuid_path) and not os.path.exists(
-                                             report_status_path):
-            with open(uuid_path) as uuid_file:
-                uuid = uuid_file.read().strip()
-            process.run(cmd % uuid, shell=True, verbose=True)
-            process.run('sudo touch %s' % report_status_path)
         self.srv_manager.start_services()
         self.srv_manager.wait_services_up()
+
+        uuid_path = '/var/lib/scylla-housekeeping/housekeeping.uuid'
+        mark_path = '/var/lib/scylla-housekeeping/housekeeping.uuid.marked'
+        cmd = 'curl "https://i6a5h9l1kl.execute-api.us-east-1.amazonaws.com/prod/check_version?uu=%s&mark=scylla"'
+        wait.wait_for(lambda: os.path.exists(uuid_path), timeout=30, step=5,
+                      text='Waiting for housekeeping.uuid generated')
+
+        if os.path.exists(uuid_path) and not os.path.exists(mark_path):
+            with open(uuid_path) as uuid_file:
+                uuid = uuid_file.read().strip()
+            self.log.debug('housekeeping.uuid is %s' % uuid)
+            process.run(cmd % uuid, shell=True, verbose=True)
+            process.run('sudo -u scylla touch %s' % mark_path, verbose=True)
 
 
 class ScyllaInstallUbuntu(ScyllaInstallGeneric):
