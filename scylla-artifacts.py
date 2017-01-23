@@ -279,14 +279,14 @@ class ScyllaInstallGeneric(object):
             process.run('sudo -u scylla touch %s' % mark_path, verbose=True)
 
 
-class ScyllaInstallUbuntu(ScyllaInstallGeneric):
+class ScyllaInstallDebian(ScyllaInstallGeneric):
 
     def __init__(self, sw_repo, mode='ci'):
-        super(ScyllaInstallUbuntu, self).__init__(sw_repo, mode)
+        super(ScyllaInstallDebian, self).__init__(sw_repo, mode)
         self.sw_repo_dst = '/etc/apt/sources.list.d/scylla.list'
 
 
-class ScyllaInstallUbuntu1404(ScyllaInstallUbuntu):
+class ScyllaInstallUbuntu1404(ScyllaInstallDebian):
 
     def setup_ci(self):
         process.run('sudo curl %s -o %s' % (self.sw_repo_src, self.sw_repo_dst),
@@ -331,7 +331,7 @@ class ScyllaInstallUbuntu1404(ScyllaInstallUbuntu):
         return pkg_list
 
 
-class ScyllaInstallUbuntu1604(ScyllaInstallUbuntu):
+class ScyllaInstallUbuntu1604(ScyllaInstallDebian):
 
     def setup_ci(self):
         process.run('sudo curl %s -o %s' % (self.sw_repo_src, self.sw_repo_dst),
@@ -341,6 +341,19 @@ class ScyllaInstallUbuntu1604(ScyllaInstallUbuntu):
 
     def setup_release(self):
         raise NotImplementedError('Ubuntu 16.04 release packages coming up, '
+                                  'hold on tight...')
+
+
+class ScyllaInstallDebian8(ScyllaInstallDebian):
+
+    def setup_ci(self):
+        process.run('sudo curl %s -o %s' % (self.sw_repo_src, self.sw_repo_dst),
+                    shell=True)
+        self.sw_manager.upgrade()
+        return ['scylla']
+
+    def setup_release(self):
+        raise NotImplementedError('Debian 8 release packages coming up, '
                                   'hold on tight...')
 
 
@@ -485,6 +498,8 @@ class ScyllaArtifactSanity(Test):
         ubuntu_16_04 = (detected_distro.name.lower() == 'ubuntu' and
                         detected_distro.version == '16' and
                         detected_distro.release == '04')
+        debian_8 = (detected_distro.name.lower() == 'debian' and
+                    detected_distro.version == '8')
         centos_7 = (detected_distro.name.lower() == 'centos' and
                     detected_distro.version == '7')
 
@@ -498,6 +513,9 @@ class ScyllaArtifactSanity(Test):
 
         elif ubuntu_16_04:
             installer = ScyllaInstallUbuntu1604(sw_repo=sw_repo, mode=mode)
+
+        elif debian_8:
+            installer = ScyllaInstallDebian8(sw_repo=sw_repo, mode=mode)
 
         elif fedora_22:
             installer = ScyllaInstallFedora22(sw_repo=sw_repo, mode=mode)
@@ -557,6 +575,7 @@ class ScyllaArtifactSanity(Test):
         self.srv_manager.wait_services_up()
         self.run_nodetool()
         self.run_cassandra_stress()
+
 
 if __name__ == '__main__':
     main()
