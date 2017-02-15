@@ -36,22 +36,6 @@ def _search_scriptlet_failure(result):
             SCRIPTLET_FAILURE_LIST.append(pkg)
 
 
-def _try_report_uuid():
-    log = logging.getLogger('avocado.test')
-    uuid_path = '/var/lib/scylla-housekeeping/housekeeping.uuid'
-    mark_path = '/var/lib/scylla-housekeeping/housekeeping.uuid.marked'
-    cmd = 'curl "https://i6a5h9l1kl.execute-api.us-east-1.amazonaws.com/prod/check_version?uu=%s&mark=scylla"'
-    wait.wait_for(lambda: os.path.exists(uuid_path), timeout=30, step=5,
-                  text='Waiting for housekeeping.uuid generated')
-
-    if os.path.exists(uuid_path) and not os.path.exists(mark_path):
-        with open(uuid_path) as uuid_file:
-            uuid = uuid_file.read().strip()
-        log.debug('housekeeping.uuid is %s' % uuid)
-        process.run(cmd % uuid, shell=True, verbose=True)
-        process.run('sudo -u scylla touch %s' % mark_path, verbose=True)
-
-
 class ScyllaYumBackend(YumBackend):
 
     def install(self, name):
@@ -263,6 +247,20 @@ class ScyllaInstallGeneric(object):
         self.log = logging.getLogger('avocado.test')
         self.srv_manager = ScyllaServiceManager()
 
+    def try_report_uuid(self):
+        uuid_path = '/var/lib/scylla-housekeeping/housekeeping.uuid'
+        mark_path = '/var/lib/scylla-housekeeping/housekeeping.uuid.marked'
+        cmd = 'curl "https://i6a5h9l1kl.execute-api.us-east-1.amazonaws.com/prod/check_version?uu=%s&mark=scylla"'
+        wait.wait_for(lambda: os.path.exists(uuid_path), timeout=30, step=5,
+                      text='Waiting for housekeeping.uuid generated')
+
+        if os.path.exists(uuid_path) and not os.path.exists(mark_path):
+            with open(uuid_path) as uuid_file:
+                uuid = uuid_file.read().strip()
+            self.log.debug('housekeeping.uuid is %s', uuid)
+            process.run(cmd % uuid, shell=True, verbose=True)
+            process.run('sudo -u scylla touch %s' % mark_path, verbose=True)
+
     def run(self):
         wait.wait_for(self.sw_manager.upgrade, timeout=300, step=30,
                       text="Wait until system is up to date...")
@@ -280,7 +278,7 @@ class ScyllaInstallGeneric(object):
 
         self.srv_manager.start_services()
         self.srv_manager.wait_services_up()
-        _try_report_uuid()
+        self.try_report_uuid()
 
 
 class ScyllaInstallDebian(ScyllaInstallGeneric):
@@ -464,7 +462,7 @@ class ScyllaInstallAMI(ScyllaInstallGeneric):
     def run(self):
         self.log.info("Testing AMI, let's just check if the DB is up...")
         self.srv_manager.wait_services_up()
-        _try_report_uuid()
+        self.try_report_uuid()
 
 
 class ScyllaArtifactSanity(Test):
