@@ -298,6 +298,7 @@ class ScyllaInstallUbuntu1404(ScyllaInstallDebian):
         result = process.run('sudo apt-cache show scylla')
         ver = re.findall("Version: (.*)", result.stdout)[0]
         if parse_version(ver) >= parse_version('1.7~rc0'):
+            process.run('sudo apt-get install software-properties-common -y', shell=True)
             process.run('sudo add-apt-repository -y ppa:openjdk-r/ppa', shell=True)
             process.run('sudo apt-get update')
             process.run('sudo apt-get install -y openjdk-8-jre-headless', shell=True)
