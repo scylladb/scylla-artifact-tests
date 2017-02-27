@@ -298,10 +298,11 @@ class ScyllaInstallUbuntu1404(ScyllaInstallDebian):
         result = process.run('sudo apt-cache show scylla')
         ver = re.findall("Version: (.*)", result.stdout)[0]
         if parse_version(ver) >= parse_version('1.7~rc0'):
+            process.run('sudo apt-get install software-properties-common -y', shell=True)
             process.run('sudo add-apt-repository -y ppa:openjdk-r/ppa', shell=True)
             process.run('sudo apt-get update')
             process.run('sudo apt-get install -y openjdk-8-jre-headless', shell=True)
-            process.run('sudo update-alternatives --set java /usr/lib/jvm/java-8-openjdk-amd64/jre/bin/java', shell=True)
+            process.run('sudo update-java-alternatives -s java-1.8.0-openjdk-amd64', shell=True)
         self.sw_manager.upgrade()
         return ['scylla']
 
@@ -360,6 +361,14 @@ class ScyllaInstallDebian8(ScyllaInstallDebian):
     def setup_ci(self):
         process.run('sudo curl %s -o %s' % (self.sw_repo_src, self.sw_repo_dst),
                     shell=True)
+        process.run('sudo apt-get update')
+        result = process.run('sudo apt-cache show scylla')
+        ver = re.findall("Version: (.*)", result.stdout)[0]
+        if parse_version(ver) >= parse_version('1.7~rc0'):
+            process.run("echo 'deb http://http.debian.net/debian jessie-backports main' > /etc/apt/sources.list.d/jessie-backports.list", shell=True)
+            process.run('sudo apt-get update')
+            process.run('sudo apt-get install -y -t jessie-backports openjdk-8-jre-headless', shell=True)
+            process.run('sudo update-java-alternatives -s java-1.8.0-openjdk-amd64', shell=True)
         self.sw_manager.upgrade()
         return ['scylla']
 
