@@ -510,9 +510,9 @@ class ScyllaArtifactSanity(Test):
         ami = self.params.get('ami', default=False) is True
         # Per my discussion with Lucas on the PR that added these lines, these lines doesn't make sense now.
         # Commenting out for now, till I fully test the impact on all artifacts jobs.
-        #if sw_repo is not None:
-            #if sw_repo.strip() != 'EMPTY':
-                #mode = 'ci'
+        # if sw_repo is not None:
+        #     if sw_repo.strip() != 'EMPTY':
+        #         mode = 'ci'
 
         detected_distro = distro.detect()
         fedora_22 = (detected_distro.name.lower() == 'fedora' and
