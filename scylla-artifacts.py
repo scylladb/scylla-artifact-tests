@@ -352,8 +352,10 @@ class ScyllaInstallUbuntu1604(ScyllaInstallDebian):
         return ['scylla']
 
     def setup_release(self):
-        raise NotImplementedError('Ubuntu 16.04 release packages coming up, '
-                                  'hold on tight...')
+        process.run('sudo curl %s -o %s' % (self.sw_repo_src, self.sw_repo_dst),
+                    shell=True)
+        self.sw_manager.upgrade()
+        return ['scylla-enterprise']
 
 
 class ScyllaInstallDebian8(ScyllaInstallDebian):
@@ -506,9 +508,11 @@ class ScyllaArtifactSanity(Test):
         sw_repo = self.params.get('sw_repo', default=None)
         mode = self.params.get('mode', default='ci')
         ami = self.params.get('ami', default=False) is True
-        if sw_repo is not None:
-            if sw_repo.strip() != 'EMPTY':
-                mode = 'ci'
+        # Per my discussion with Lucas on the PR that added these lines, these lines doesn't make sense now.
+        # Commenting out for now, till I fully test the impact on all artifacts jobs.
+        #if sw_repo is not None:
+            #if sw_repo.strip() != 'EMPTY':
+                #mode = 'ci'
 
         detected_distro = distro.detect()
         fedora_22 = (detected_distro.name.lower() == 'fedora' and
