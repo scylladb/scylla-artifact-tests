@@ -20,6 +20,18 @@ What's inside?
 2. A scylla-artifacts.py.data dir, containing a multiplexer file for
    the test [3] (basically a way to pass parameters to the test.
 
+Environment Setup
+-----------------
+
+1. Install avocado from pip
+```
+sudo yum install libvirt libvirt-devel pkgconfig gdb-gdbserver git -y
+sudo pip install -r https://raw.githubusercontent.com/avocado-framework/avocado/36lts/requirements.txt
+sudo pip install avocado-framework==36.* --upgrade
+```
+2. You can also reveference avocado doc [4] to install in by other methods
+
 * [1] http://avocado-framework.github.io/
 * [2] http://docs.aws.amazon.com/AWSEC2/latest/UserGuide/AMIs.html
 * [3] http://avocado-framework.readthedocs.org/en/latest/MultiplexConfig.html
+* [4] http://avocado-framework.readthedocs.io/en/48.0/GetStartedGuide.html#installing-avocado
