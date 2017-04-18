@@ -508,9 +508,44 @@ class ScyllaInstallCentOS7(ScyllaInstallCentOS):
 
 
 class ScyllaInstallAMI(ScyllaInstallGeneric):
+    def check_used_driver(self, expected_driver=''):
+        """
+        Make sure VPS is enabled and enhanced network driver is used.
+        """
+        with open('/sys/class/net/eth0/address', 'r') as f:
+            address = f.read().strip()
+        result = process.run('curl -s http://169.254.169.254/latest/meta-data/network/interfaces/macs/%s/' % address)
+        assert 'vpc-id' in result.stdout, 'VPC is not enabled! debug: %s' % result.stdout
+
+        # check driver information
+        result = process.run('ethtool -i eth0')
+        used_driver = re.findall('^driver:\s(.*)', result.stdout)[0]
+        err = "Enhanced networking isn't enabled, current driver: %s, expected: %s" % (used_driver, expected_driver)
+        assert expected_driver == used_driver, err
+        self.log.info("Enhanced networking isn enabled, current driver: %s" % used_driver)
+
+    def enhanced_net_enabled(self):
+        """
+        Check the enhanced network is enabled for some special instances.
+        """
+        result = process.run('curl -s http://169.254.169.254/latest/meta-data/instance-type')
+        if '.' in result.stdout:
+            maintype, subtype = result.stdout.split('.')
+        else:
+            maintype = result.stdout
+            subtype = ''
+
+        # Referenced: https://github.com/scylladb/scylla/commit/b8f40a2d
+        if maintype in ['i3', 'p2', 'r4', 'x1'] or (maintype == 'm4' and subtype == '16xlarge'):
+            self.check_used_driver('ena')
+        elif maintype in ['c3', 'c4', 'd2', 'i2', 'r3'] or (maintype == 'm4'):
+            self.check_used_driver('ixgbevf')
+        else:
+            self.log.info("The instance (%s) doesn't support enahanced networking!", result.stdout)
 
     def run(self):
         self.log.info("Testing AMI, let's just check if the DB is up...")
+        self.enhanced_net_enabled()
         self.srv_manager.wait_services_up()
         self.try_report_uuid()
 
