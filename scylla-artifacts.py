@@ -275,7 +275,20 @@ class ScyllaInstallGeneric(object):
                 e_msg = ('Package %s could not be installed '
                          '(see logs for details)' % os.path.basename(pkg))
                 raise InstallPackageError(e_msg)
-        process.run('/usr/lib/scylla/scylla_io_setup', shell=True)
+
+        # enable raid setup when second disk exists
+        setup_cmd = 'sudo /usr/lib/scylla/scylla_setup --nic eth0'
+        result = process.run('ls /dev/[hvs]db', shell=True, ignore_status=True)
+        devlist = result.stdout.split()
+        if devlist:
+            setup_cmd += ' --disks %s' % devlist[-1]
+        else:
+            setup_cmd += ' --no-raid-setup'
+
+        # disable cpuscaling setup for known issue:
+        # https://github.com/scylladb/scylla/issues/2051
+        setup_cmd += ' --no-cpuscaling-setup'
+        process.run(setup_cmd, shell=True)
 
         self.srv_manager.start_services()
         self.srv_manager.wait_services_up()
