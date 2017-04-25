@@ -633,12 +633,12 @@ class ScyllaArtifactSanity(Test):
         cassandra_stress_exec = path.find_command('cassandra-stress')
         stress_populate = ('%s write n=10000 -mode cql3 native -pop seq=1..10000' %
                            cassandra_stress_exec)
-        result_populate = process.run(stress_populate)
+        result_populate = process.run(stress_populate, timeout=600)
         check_output(result_populate)
         stress_mixed = ('%s mixed duration=1m -mode cql3 native '
                         '-rate threads=10 -pop seq=1..10000' %
                         cassandra_stress_exec)
-        result_mixed = process.run(stress_mixed, shell=True)
+        result_mixed = process.run(stress_mixed, shell=True, timeout=300)
         check_output(result_mixed)
 
     def run_nodetool(self):
