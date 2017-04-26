@@ -287,7 +287,10 @@ class ScyllaInstallGeneric(object):
 
         # disable cpuscaling setup for known issue:
         # https://github.com/scylladb/scylla/issues/2051
-        setup_cmd += ' --no-cpuscaling-setup'
+        with open('/usr/lib/scylla/scylla_setup', 'r') as f:
+            script_content = f.read()
+        if '--no-cpuscaling-setup' in script_content:
+            setup_cmd += ' --no-cpuscaling-setup'
         process.run(setup_cmd, shell=True)
 
         self.srv_manager.start_services()
