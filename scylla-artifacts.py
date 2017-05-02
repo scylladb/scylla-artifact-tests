@@ -288,6 +288,9 @@ class ScyllaInstallGeneric(object):
         else:
             setup_cmd += ' --no-raid-setup'
 
+        if os.path.exists('/usr/bin/node_exporter'):
+            setup_cmd += ' --no-node-exporter'
+
         # disable cpuscaling setup for known issue:
         # https://github.com/scylladb/scylla/issues/2051
         with open('/usr/lib/scylla/scylla_setup', 'r') as f:
