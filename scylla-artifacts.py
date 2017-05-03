@@ -280,10 +280,16 @@ class ScyllaInstallGeneric(object):
         setup_cmd = 'sudo /usr/lib/scylla/scylla_setup --nic eth0'
         result = process.run('ls /dev/[hvs]db', shell=True, ignore_status=True)
         devlist = result.stdout.split()
-        if devlist:
+
+        with open('/proc/mounts', 'r') as f:
+            mounts_content = f.read()
+        if devlist and '/var/lib/scylla' not in mounts_content:
             setup_cmd += ' --disks %s' % devlist[-1]
         else:
             setup_cmd += ' --no-raid-setup'
+
+        if os.path.exists('/usr/bin/node_exporter'):
+            setup_cmd += ' --no-node-exporter'
 
         # disable cpuscaling setup for known issue:
         # https://github.com/scylladb/scylla/issues/2051
