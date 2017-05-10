@@ -1,0 +1,3 @@
+# Docker
+docker_image: scylladb/scylla-nightly
+node_cnt: 2
