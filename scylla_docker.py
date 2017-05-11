@@ -54,7 +54,7 @@ class ScyllaDocker(object):
 
     def create_cluster(self):
         log.debug('create cluster')
-        self._cmd('run --name {} -d {}'.format(self._seed_name, self._image))
+        self._cmd('run --name {} -d {} >/dev/null'.format(self._seed_name, self._image))
         self.nodes.append(self._seed_name)
         if self._node_cnt > 1:
             seed_ip = self.get_node_ip(self._seed_name)
