@@ -10,6 +10,14 @@ from avocado import main
 log = logging.getLogger('scylla_docker')
 
 
+class DockerCommandError(Exception):
+    pass
+
+
+class DockerContainerNotExists(Exception):
+    pass
+
+
 class ScyllaDocker(object):
     """
     Implements methods for deploying scylla with docker
@@ -29,8 +37,14 @@ class ScyllaDocker(object):
     def _cmd(cmd, timeout=10, sudo=False):
         res = process.run('docker {}'.format(cmd), ignore_status=True, timeout=timeout, sudo=sudo)
         if res.exit_status:
-            raise Exception('Docker command failed: {}, error: {}, output: {}'.format(cmd, res.stderr, res.stdout))
+            if 'No such container:' in res.stderr:
+                raise DockerContainerNotExists(res.stderr)
+            raise DockerCommandError('command: {}, error: {}, output: {}'.format(cmd, res.stderr, res.stdout))
         return res.stdout
+
+    def update_image(self):
+        log.debug('update scylla image')
+        self._cmd('pull {}'.format(self._image))
 
     def get_node_ip(self, node_name):
         out = self._cmd("inspect --format='{{{{ .NetworkSettings.IPAddress }}}}' {}".format(node_name))
@@ -41,20 +55,20 @@ class ScyllaDocker(object):
         return json.loads(out)
 
     def start_node(self, node):
-        self._cmd('container start {}'.format(node))
+        self._cmd('start {}'.format(node))
 
     def stop_node(self, node):
-        self._cmd('container stop {}'.format(node), timeout=30)
+        self._cmd('stop {}'.format(node), timeout=30)
 
     def restart_node(self, node):
-        self._cmd('container restart {}'.format(node), timeout=30)
+        self._cmd('restart {}'.format(node), timeout=30)
 
     def remove_node(self, node):
-        self._cmd('container rm {}'.format(node))
+        self._cmd('rm {}'.format(node))
 
     def create_cluster(self):
         log.debug('create cluster')
-        self._cmd('run --name {} -d {} >/dev/null'.format(self._seed_name, self._image))
+        self._cmd('run --name {} -d {}'.format(self._seed_name, self._image))
         self.nodes.append(self._seed_name)
         if self._node_cnt > 1:
             seed_ip = self.get_node_ip(self._seed_name)
@@ -157,11 +171,23 @@ class ScyllaDockerSanity(Test):
         self.node_cnt = 2
         self.op_cnt = 100000
 
+    def _cleanup(self):
+        log.debug('cleanup cluster if exists')
+        for i in range(1, self.node_cnt + 1):
+            node_name = 'node{}'.format(i)
+            for method in ('stop_node', 'remove_node'):
+                try:
+                    getattr(self.docker, method)(node_name)
+                except DockerContainerNotExists:
+                    pass
+
     def setUp(self):
         """
-        Create cluster
+        Update scylla image, create cluster(cleanup if exists)
         """
         self.docker = ScyllaDocker(image=self.image, node_cnt=self.node_cnt)
+        self.docker.update_image()
+        self._cleanup()
         self.docker.create_cluster()
 
     def tearDown(self):
