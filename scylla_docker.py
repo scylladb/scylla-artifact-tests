@@ -77,8 +77,11 @@ class ScyllaDocker(object):
                 self._cmd('run --name {} -d {} --seeds="{}"'.format(node_name, self._image, seed_ip))
                 self.nodes.append(node_name)
         status = False
-        while not status:
+        try_cnt = 0
+        while not status and try_cnt < 10:
             status = self.node_status(self._seed_name)
+            time.sleep(2)
+            try_cnt += 1
         if not self.wait_for_cluster_up():
             raise Exception('Failed to start cluster: timeout expired.')
         return self.nodes
