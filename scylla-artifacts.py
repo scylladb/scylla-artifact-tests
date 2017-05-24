@@ -281,9 +281,7 @@ class ScyllaInstallGeneric(object):
         result = process.run('ls /dev/[hvs]db', shell=True, ignore_status=True)
         devlist = result.stdout.split()
 
-        with open('/proc/mounts', 'r') as f:
-            mounts_content = f.read()
-        if devlist and '/var/lib/scylla' not in mounts_content:
+        if devlist and not os.path.ismount('/var/lib/scylla'):
             setup_cmd += ' --disks %s' % devlist[-1]
         else:
             setup_cmd += ' --no-raid-setup'
@@ -302,6 +300,27 @@ class ScyllaInstallGeneric(object):
         self.srv_manager.start_services()
         self.srv_manager.wait_services_up()
         self.try_report_uuid()
+
+        # verify SELinux setup
+        if os.path.exists('/etc/selinux'):
+            result = process.run('getenforce')
+            assert 'Enforcing' not in result.stdout, "SELinux is still actived"
+        # verify node_exporter install
+        assert os.path.exists('/usr/bin/node_exporter'), "node_exporter isn't installed"
+        # verify raid setup
+        if devlist:
+            assert os.path.ismount('/var/lib/scylla'), "RAID setup failed, scylla directory isn't mounted rightly"
+        # verify ntp
+        process.run('systemctl status ntpd')
+        # verify coredump setup
+        result = process.run('coredumpctl info', ignore_status=True)
+        assert 'No coredumps found.' == result.stderr.strip(), "Coredump info doesn't work"
+        if devlist:
+            assert os.path.realpath('/var/lib/systemd/coredump') == '/var/lib/scylla/coredump', "Coredump directory isn't pointed to raid disk"
+        # verify io and sysconfig setup
+        process.run('systemctl status scylla-server')
+        process.run('systemctl status collectd')
+        process.run('systemctl status scylla-housekeeping-restart.timer')
 
 
 class ScyllaInstallDebian(ScyllaInstallGeneric):
