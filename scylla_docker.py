@@ -42,9 +42,15 @@ class ScyllaDocker(object):
             raise DockerCommandError('command: {}, error: {}, output: {}'.format(cmd, res.stderr, res.stdout))
         return res.stdout
 
+    def clean_old_images(self):
+        images = self._cmd('images -f "dangling=true" -q')
+        if images:
+            self._cmd('rmi {}'.format(images), timeout=90)
+
     def update_image(self):
         log.debug('update scylla image')
         self._cmd('pull {}'.format(self._image), timeout=90)
+        self.clean_old_images()
 
     def get_node_ip(self, node_name):
         out = self._cmd("inspect --format='{{{{ .NetworkSettings.IPAddress }}}}' {}".format(node_name))
