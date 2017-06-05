@@ -23,6 +23,9 @@ from avocado.utils.software_manager import SystemInspector
 
 SCRIPTLET_FAILURE_LIST = []
 
+def is_systemd():
+    result = process.run("cat /proc/1/comm")
+    return 'systemd' in result.stdout
 
 def _search_scriptlet_failure(result):
     global SCRIPTLET_FAILURE_LIST
@@ -301,8 +304,11 @@ class ScyllaInstallGeneric(object):
         self.srv_manager.wait_services_up()
         self.try_report_uuid()
 
-        # verify SELinux setup
-        if os.path.exists('/etc/selinux'):
+        # verify SELinux setup on Red Hat variants
+        detected_distro = distro.detect()
+        distro_name = detected_distro.name.lower()
+        is_debian_variant = 'ubuntu' in distro_name or 'debian' in distro_name
+        if not is_debian_variant:
             result = process.run('getenforce')
             assert 'Enforcing' not in result.stdout, "SELinux is still actived"
         # verify node_exporter install
@@ -311,16 +317,30 @@ class ScyllaInstallGeneric(object):
         if devlist:
             assert os.path.ismount('/var/lib/scylla'), "RAID setup failed, scylla directory isn't mounted rightly"
         # verify ntp
-        process.run('systemctl status ntpd')
+        if is_debian_variant:
+            process.run('service ntp status')
+        else:
+            process.run('systemctl status ntpd')
         # verify coredump setup
-        result = process.run('coredumpctl info', ignore_status=True)
-        assert 'No coredumps found.' == result.stderr.strip(), "Coredump info doesn't work"
-        if devlist:
-            assert os.path.realpath('/var/lib/systemd/coredump') == '/var/lib/scylla/coredump', "Coredump directory isn't pointed to raid disk"
+        if is_systemd():
+            result = process.run('coredumpctl info', ignore_status=True)
+            assert 'No coredumps found.' == result.stderr.strip(), "Coredump info doesn't work"
+            if devlist:
+                coredump_err = "Coredump directory isn't pointed to raid disk"
+                assert os.path.realpath('/var/lib/systemd/coredump') == '/var/lib/scylla/coredump', coredump_err
+        else:
+            result = process.run('sysctl kernel.core_pattern')
+            assert 'scylla_save_coredump' in result.stdout
         # verify io and sysconfig setup
-        process.run('systemctl status scylla-server')
-        process.run('systemctl status collectd')
-        process.run('systemctl status scylla-housekeeping-restart.timer')
+        if is_systemd():
+            process.run('systemctl status scylla-server')
+            process.run('systemctl status collectd')
+            process.run('systemctl status scylla-housekeeping-restart.timer')
+        else:
+            result = process.run('service scylla-server status')
+            assert 'running' in result.stdout
+            result = process.run('service collectd status')
+            assert 'running' in result.stdout
 
 
 class ScyllaInstallDebian(ScyllaInstallGeneric):
