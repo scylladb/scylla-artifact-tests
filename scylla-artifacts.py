@@ -301,8 +301,11 @@ class ScyllaInstallGeneric(object):
         self.srv_manager.wait_services_up()
         self.try_report_uuid()
 
-        # verify SELinux setup
-        if os.path.exists('/etc/selinux'):
+        # verify SELinux setup on Red Hat variants
+        detected_distro = distro.detect()
+        distro_name = detected_distro.name.lower()
+        is_debian_variant = 'ubuntu' in distro_name or 'debian' in distro_name
+        if not is_debian_variant:
             result = process.run('getenforce')
             assert 'Enforcing' not in result.stdout, "SELinux is still actived"
         # verify node_exporter install
