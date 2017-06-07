@@ -322,7 +322,7 @@ class ScyllaInstallGeneric(object):
         else:
             process.run('systemctl status ntpd')
         # verify coredump setup
-        if is_systemd():
+        if is_systemd() and 'debian' not in distro_name:
             result = process.run('coredumpctl info', ignore_status=True)
             assert 'No coredumps found.' == result.stderr.strip(), "Coredump info doesn't work"
             if devlist:
