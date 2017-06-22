@@ -23,9 +23,11 @@ from avocado.utils.software_manager import SystemInspector
 
 SCRIPTLET_FAILURE_LIST = []
 
+
 def is_systemd():
     result = process.run("cat /proc/1/comm")
     return 'systemd' in result.stdout
+
 
 def _search_scriptlet_failure(result):
     global SCRIPTLET_FAILURE_LIST
