@@ -24,11 +24,6 @@ from avocado.utils.software_manager import SystemInspector
 SCRIPTLET_FAILURE_LIST = []
 
 
-def is_systemd():
-    result = process.run("cat /proc/1/comm")
-    return 'systemd' in result.stdout
-
-
 def _search_scriptlet_failure(result):
     global SCRIPTLET_FAILURE_LIST
     output = result.stdout + result.stderr
@@ -244,14 +239,21 @@ class ScyllaServiceManager(object):
 
 class ScyllaInstallGeneric(object):
 
-    def __init__(self, sw_repo=None, mode='ci'):
+    def __init__(self, sw_repo=None):
         self.base_url = 'https://s3.amazonaws.com/downloads.scylladb.com/'
-        self.mode = mode
         self.sw_manager = ScyllaSoftwareManager()
         self.sw_repo_src = sw_repo
         self.sw_repo_dst = None
         self.log = logging.getLogger('avocado.test')
         self.srv_manager = ScyllaServiceManager()
+        self.is_enterprise = None
+
+    def scylla_pkg(self):
+        return 'scylla'
+
+    def is_systemd(self):
+        result = process.run("cat /proc/1/comm")
+        return 'systemd' in result.stdout
 
     def try_report_uuid(self):
         uuid_path = '/var/lib/scylla-housekeeping/housekeeping.uuid'
@@ -270,11 +272,8 @@ class ScyllaInstallGeneric(object):
     def run(self):
         wait.wait_for(self.sw_manager.upgrade, timeout=300, step=30,
                       text="Wait until system is up to date...")
-        if self.mode == 'ci':
-            get_packages = self.setup_ci
-        else:
-            get_packages = self.setup_release
-        pkgs = get_packages()
+        # setup software repo and other environment before install test packages
+        pkgs = self.env_setup()
         for pkg in pkgs:
             if not self.sw_manager.install(pkg):
                 e_msg = ('Package %s could not be installed '
@@ -324,7 +323,7 @@ class ScyllaInstallGeneric(object):
         else:
             process.run('systemctl status ntpd')
         # verify coredump setup
-        if is_systemd() and 'debian' not in distro_name:
+        if self.is_systemd() and 'debian' not in distro_name:
             result = process.run('coredumpctl info', ignore_status=True)
             assert 'No coredumps found.' == result.stderr.strip(), "Coredump info doesn't work"
             if devlist:
@@ -334,7 +333,7 @@ class ScyllaInstallGeneric(object):
             result = process.run('sysctl kernel.core_pattern')
             assert 'scylla_save_coredump' in result.stdout
         # verify io and sysconfig setup
-        if is_systemd():
+        if self.is_systemd():
             process.run('systemctl status scylla-server')
             process.run('systemctl status collectd')
             #process.run('systemctl status scylla-housekeeping-restart.timer')
@@ -347,169 +346,92 @@ class ScyllaInstallGeneric(object):
 
 class ScyllaInstallDebian(ScyllaInstallGeneric):
 
-    def __init__(self, sw_repo, mode='ci'):
-        super(ScyllaInstallDebian, self).__init__(sw_repo, mode)
+    def __init__(self, sw_repo):
+        super(ScyllaInstallDebian, self).__init__(sw_repo)
         self.sw_repo_dst = '/etc/apt/sources.list.d/scylla.list'
+
+    def prepare_java_repo(self):
+        raise NotImplementedError
+
+    def install_java18(self, args=''):
+        # fixme: update the version for enterprise in future when it requests java 1.8
+        result = process.run('sudo apt-cache show {}'.format(self.scylla_pkg()))
+        ver = re.findall("Version: ([\d.]+)", result.stdout)[0].strip('.')
+        request_ver = '2017.666' if self.is_enterprise else '1.7'
+        if parse_version(ver) < parse_version(request_ver):
+            self.log.info("Java 1.8 isn't requested by current version {}".format(ver))
+            return
+        self.prepare_java_repo()
+        process.run('sudo apt-get update')
+        process.run('sudo apt-get install -y openjdk-8-jre-headless {}'.format(args), shell=True)
+        process.run('sudo update-java-alternatives -s java-1.8.0-openjdk-amd64', shell=True)
+
+    def scylla_pkg(self):
+        """
+        Get package name, compat both of scylla and scylla-enterprise.
+        """
+        if self.is_enterprise is None:
+            result = process.run('sudo apt-cache search scylla-enterprise')
+            self.is_enterprise = True if 'scylla-enterprise' in result.stdout else False
+        return 'scylla-enterprise' if self.is_enterprise else 'scylla'
 
 
 class ScyllaInstallUbuntu1404(ScyllaInstallDebian):
+    def prepare_java_repo(self):
+        process.run('sudo apt-get install software-properties-common -y', shell=True)
+        process.run('sudo add-apt-repository -y ppa:openjdk-r/ppa', shell=True)
 
-    def setup_ci(self):
+    def env_setup(self):
         process.run('sudo curl %s -o %s' % (self.sw_repo_src, self.sw_repo_dst),
                     shell=True)
         process.run('sudo apt-get update')
-        result = process.run('sudo apt-cache show scylla')
-        ver = re.findall("Version: ([\d.]+)", result.stdout)[0].strip('.')
-        if parse_version(ver) >= parse_version('1.7'):
-            process.run('sudo apt-get install software-properties-common -y', shell=True)
-            process.run('sudo add-apt-repository -y ppa:openjdk-r/ppa', shell=True)
-            process.run('sudo apt-get update')
-            process.run('sudo apt-get install -y openjdk-8-jre-headless', shell=True)
-            process.run('sudo update-java-alternatives -s java-1.8.0-openjdk-amd64', shell=True)
+        self.install_java18()
         self.sw_manager.upgrade()
-        return ['scylla']
-
-    def setup_release(self):
-        # Commenting out for now, till I make sure we don't need it anymore.
-        # repo_src_1_0 = 'http://downloads.scylladb.com/deb/ubuntu/scylla-1.0.list'
-        # repo_src_1_1 = 'http://downloads.scylladb.com/deb/ubuntu/scylla-1.1.list'
-        # repo_src_1_2 = 'http://downloads.scylladb.com/deb/ubuntu/scylla-1.2-trusty.list'
-        # repo_src_1_3 = 'http://downloads.scylladb.com/deb/ubuntu/scylla-1.3-trusty.list'
-        # repo_src_1_4 = 'http://downloads.scylladb.com/deb/ubuntu/scylla-1.4-trusty.list'
-        # repo_src_1_5 = 'http://downloads.scylladb.com/deb/ubuntu/scylla-1.5-trusty.list'
-        # repo_src_unstable = 'http://downloads.scylladb.com/deb/unstable/ubuntu/master/latest/scylla.list'
-        # repo_src = repo_src_1_5
-        # pkg_list = ['scylla']
-        # if self.mode == '1.0':
-        #     repo_src = repo_src_1_0
-        #     pkg_list = ['scylla-server', 'scylla-jmx', 'scylla-tools']
-        # elif self.mode == '1.1':
-        #     repo_src = repo_src_1_1
-        #     pkg_list = ['scylla-server', 'scylla-jmx', 'scylla-tools']
-        # elif self.mode == '1.2':
-        #     repo_src = repo_src_1_2
-        #     pkg_list = ['scylla']
-        # elif self.mode == '1.3':
-        #     repo_src = repo_src_1_3
-        #     pkg_list = ['scylla']
-        # elif self.mode == '1.4':
-        #     repo_src = repo_src_1_4
-        #     pkg_list = ['scylla']
-        # elif self.mode == '1.5':
-        #     repo_src = repo_src_1_5
-        #     pkg_list = ['scylla']
-        # elif self.mode == 'unstable':
-        #     repo_src = repo_src_unstable
-        #     pkg_list = ['scylla']
-        # process.run('sudo curl %s -o %s' % (repo_src, self.sw_repo_dst),
-        #             shell=True)
-        # self.sw_manager.upgrade()
-        # return pkg_list
-        process.run('sudo curl %s -o %s' % (self.sw_repo_src, self.sw_repo_dst),
-                    shell=True)
-        process.run('sudo apt-get update')
-        result = process.run('sudo apt-cache show scylla-enterprise')
-        ver = re.findall("Version: (.*)", result.stdout)[0]
-        if parse_version(ver) >= parse_version('1.7~rc0'):
-            process.run('sudo apt-get install software-properties-common -y', shell=True)
-            process.run('sudo add-apt-repository -y ppa:openjdk-r/ppa', shell=True)
-            process.run('sudo apt-get update')
-            process.run('sudo apt-get install -y openjdk-8-jre-headless', shell=True)
-            process.run('sudo update-java-alternatives -s java-1.8.0-openjdk-amd64', shell=True)
-        self.sw_manager.upgrade()
-        return ['scylla-enterprise']
+        return [self.scylla_pkg()]
 
 
 class ScyllaInstallUbuntu1604(ScyllaInstallDebian):
 
-    def setup_ci(self):
+    def env_setup(self):
         process.run('sudo curl %s -o %s' % (self.sw_repo_src, self.sw_repo_dst),
                     shell=True)
         self.sw_manager.upgrade()
-        return ['scylla']
-
-    def setup_release(self):
-        process.run('sudo curl %s -o %s' % (self.sw_repo_src, self.sw_repo_dst),
-                    shell=True)
-        self.sw_manager.upgrade()
-        return ['scylla-enterprise']
+        return [self.scylla_pkg()]
 
 
 class ScyllaInstallDebian8(ScyllaInstallDebian):
+    def prepare_java_repo(self):
+        process.run("echo 'deb http://http.debian.net/debian jessie-backports main' > /etc/apt/sources.list.d/jessie-backports.list", shell=True)
 
-    def setup_ci(self):
+    def env_setup(self):
         process.run('sudo curl %s -o %s' % (self.sw_repo_src, self.sw_repo_dst),
                     shell=True)
         process.run('sudo apt-get update')
-        result = process.run('sudo apt-cache show scylla')
-        ver = re.findall("Version: (.*)", result.stdout)[0]
-        if parse_version(ver) >= parse_version('1.7~rc0'):
-            process.run("echo 'deb http://http.debian.net/debian jessie-backports main' > /etc/apt/sources.list.d/jessie-backports.list", shell=True)
-            process.run('sudo apt-get update')
-            process.run('sudo apt-get install -y -t jessie-backports openjdk-8-jre-headless', shell=True)
-            process.run('sudo update-java-alternatives -s java-1.8.0-openjdk-amd64', shell=True)
+        self.install_java18(args=' -t jessie-backports')
         self.sw_manager.upgrade()
-        return ['scylla']
-
-    def setup_release(self):
-        process.run('sudo curl %s -o %s' % (self.sw_repo_src, self.sw_repo_dst),
-                    shell=True)
-        process.run('sudo apt-get update')
-        result = process.run('sudo apt-cache show scylla-enterprise')
-        ver = re.findall("Version: (.*)", result.stdout)[0]
-        if parse_version(ver) >= parse_version('1.7~rc0'):
-            process.run("echo 'deb http://http.debian.net/debian jessie-backports main' > /etc/apt/sources.list.d/jessie-backports.list", shell=True)
-            process.run('sudo apt-get update')
-            process.run('sudo apt-get install -y -t jessie-backports openjdk-8-jre-headless', shell=True)
-            process.run('sudo update-java-alternatives -s java-1.8.0-openjdk-amd64', shell=True)
-        self.sw_manager.upgrade()
-        return ['scylla-enterprise']
+        return [self.scylla_pkg()]
 
 
 class ScyllaInstallFedora(ScyllaInstallGeneric):
 
-    def __init__(self, sw_repo, mode='ci'):
-        super(ScyllaInstallFedora, self).__init__(sw_repo, mode)
+    def __init__(self, sw_repo):
+        super(ScyllaInstallFedora, self).__init__(sw_repo)
         self.sw_repo_dst = '/etc/yum.repos.d/scylla.repo'
 
 
 class ScyllaInstallFedora22(ScyllaInstallFedora):
 
-    def setup_ci(self):
+    def env_setup(self):
         process.run('sudo curl %s -o %s' % (self.sw_repo_src, self.sw_repo_dst),
                     shell=True)
         self.sw_manager.upgrade()
         return ['scylla']
 
-    def setup_release(self):
-        repo_src_1_0 = 'http://downloads.scylladb.com/rpm/fedora/scylla-1.0.repo'
-        repo_src_1_1 = 'http://downloads.scylladb.com/rpm/fedora/scylla-1.1.repo'
-        repo_src_1_2 = 'http://downloads.scylladb.com/rpm/fedora/scylla-1.2.repo'
-        repo_src_unstable = 'http://downloads.scylladb.com/rpm/unstable/fedora/master/latest/scylla.repo'
-        repo_src = repo_src_1_1
-        pkg_list = []
-        if self.mode == '1.0':
-            repo_src = repo_src_1_0
-            pkg_list = ['scylla-server', 'scylla-jmx', 'scylla-tools']
-        elif self.mode == '1.1':
-            repo_src = repo_src_1_1
-            pkg_list = ['scylla-server', 'scylla-jmx', 'scylla-tools']
-        elif self.mode == '1.2':
-            repo_src = repo_src_1_2
-            pkg_list = ['scylla']
-        elif self.mode == 'unstable':
-            repo_src = repo_src_unstable
-            pkg_list = ['scylla']
-        process.run('sudo curl %s -o %s' % (repo_src, self.sw_repo_dst),
-                    shell=True)
-        self.sw_manager.upgrade()
-        return pkg_list
-
 
 class ScyllaInstallCentOS(ScyllaInstallGeneric):
 
-    def __init__(self, sw_repo, mode='ci'):
-        super(ScyllaInstallCentOS, self).__init__(sw_repo, mode)
+    def __init__(self, sw_repo):
+        super(ScyllaInstallCentOS, self).__init__(sw_repo)
         self.sw_repo_dst = '/etc/yum.repos.d/scylla.repo'
 
     def _centos_remove_system_packages(self):
@@ -517,57 +439,24 @@ class ScyllaInstallCentOS(ScyllaInstallGeneric):
         self.sw_manager.remove('boost-system')
         self.sw_manager.remove('abrt')
 
+    def scylla_pkg(self):
+        """
+        Get package name, compat both of scylla and scylla-enterprise.
+        """
+        if self.is_enterprise is None:
+            result = process.run('sudo yum search scylla-enterprise')
+            self.is_enterprise = True if 'scylla-enterprise.x86_64' in result.stdout else False
+        return 'scylla-enterprise' if self.is_enterprise else 'scylla'
+
 
 class ScyllaInstallCentOS7(ScyllaInstallCentOS):
 
-    def setup_ci(self):
+    def env_setup(self):
         self._centos_remove_system_packages()
         process.run('sudo curl %s -o %s' % (self.sw_repo_src, self.sw_repo_dst),
                     shell=True)
         self.sw_manager.upgrade()
-        return ['scylla']
-
-    def setup_release(self):
-        # Commenting out for now, till I make sure we don't need this anymore.
-        # self._centos_remove_system_packages()
-        # repo_src_1_0 = 'http://downloads.scylladb.com/rpm/centos/scylla-1.0.repo'
-        # repo_src_1_1 = 'http://downloads.scylladb.com/rpm/centos/scylla-1.1.repo'
-        # repo_src_1_2 = 'http://downloads.scylladb.com/rpm/centos/scylla-1.2.repo'
-        # repo_src_1_3 = 'http://downloads.scylladb.com/rpm/centos/scylla-1.3.repo'
-        # repo_src_1_4 = 'http://downloads.scylladb.com/rpm/centos/scylla-1.4.repo'
-        # repo_src_1_5 = 'http://downloads.scylladb.com/rpm/centos/scylla-1.5.repo'
-        # repo_src_unstable = 'http://downloads.scylladb.com/rpm/unstable/centos/master/latest/scylla.repo'
-        # repo_src = repo_src_1_5
-        # pkg_list = ['scylla']
-        # if self.mode == '1.0':
-        #     repo_src = repo_src_1_0
-        #     pkg_list = ['scylla-server', 'scylla-jmx', 'scylla-tools']
-        # elif self.mode == '1.1':
-        #     repo_src = repo_src_1_1
-        #     pkg_list = ['scylla-server', 'scylla-jmx', 'scylla-tools']
-        # elif self.mode == '1.2':
-        #     repo_src = repo_src_1_2
-        #     pkg_list = ['scylla']
-        # elif self.mode == '1.3':
-        #     repo_src = repo_src_1_3
-        #     pkg_list = ['scylla']
-        # elif self.mode == '1.4':
-        #     repo_src = repo_src_1_4
-        #     pkg_list = ['scylla']
-        # elif self.mode == '1.5':
-        #     repo_src = repo_src_1_5
-        #     pkg_list = ['scylla']
-        # elif self.mode == 'unstable':
-        #     repo_src = repo_src_unstable
-        # process.run('sudo curl %s -o %s' % (repo_src, self.sw_repo_dst),
-        #             shell=True)
-        # self.sw_manager.upgrade()
-        # return pkg_list
-        self._centos_remove_system_packages()
-        process.run('sudo curl %s -o %s' % (self.sw_repo_src, self.sw_repo_dst),
-                    shell=True)
-        self.sw_manager.upgrade()
-        return ['scylla-enterprise']
+        return [self.scylla_pkg()]
 
 
 class ScyllaInstallAMI(ScyllaInstallGeneric):
@@ -634,13 +523,7 @@ class ScyllaArtifactSanity(Test):
         self._log_collection_thread = threading.Thread(target=get_scylla_logs)
         self._log_collection_thread.start()
         sw_repo = self.params.get('sw_repo', default=None)
-        mode = self.params.get('mode', default='ci')
         ami = self.params.get('ami', default=False) is True
-        # Per my discussion with Lucas on the PR that added these lines, these lines doesn't make sense now.
-        # Commenting out for now, till I fully test the impact on all artifacts jobs.
-        # if sw_repo is not None:
-        #     if sw_repo.strip() != 'EMPTY':
-        #         mode = 'ci'
 
         detected_distro = distro.detect()
         fedora_22 = (detected_distro.name.lower() == 'fedora' and
@@ -662,19 +545,19 @@ class ScyllaArtifactSanity(Test):
             installer = ScyllaInstallAMI()
 
         elif ubuntu_14_04:
-            installer = ScyllaInstallUbuntu1404(sw_repo=sw_repo, mode=mode)
+            installer = ScyllaInstallUbuntu1404(sw_repo=sw_repo)
 
         elif ubuntu_16_04:
-            installer = ScyllaInstallUbuntu1604(sw_repo=sw_repo, mode=mode)
+            installer = ScyllaInstallUbuntu1604(sw_repo=sw_repo)
 
         elif debian_8:
-            installer = ScyllaInstallDebian8(sw_repo=sw_repo, mode=mode)
+            installer = ScyllaInstallDebian8(sw_repo=sw_repo)
 
         elif fedora_22:
-            installer = ScyllaInstallFedora22(sw_repo=sw_repo, mode=mode)
+            installer = ScyllaInstallFedora22(sw_repo=sw_repo)
 
         elif centos_7:
-            installer = ScyllaInstallCentOS7(sw_repo=sw_repo, mode=mode)
+            installer = ScyllaInstallCentOS7(sw_repo=sw_repo)
 
         else:
             self.skip('Unsupported OS: %s' % detected_distro)
