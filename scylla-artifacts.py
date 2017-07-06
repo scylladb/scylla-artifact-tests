@@ -24,11 +24,6 @@ from avocado.utils.software_manager import SystemInspector
 SCRIPTLET_FAILURE_LIST = []
 
 
-def is_systemd():
-    result = process.run("cat /proc/1/comm")
-    return 'systemd' in result.stdout
-
-
 def _search_scriptlet_failure(result):
     global SCRIPTLET_FAILURE_LIST
     output = result.stdout + result.stderr
@@ -252,6 +247,10 @@ class ScyllaInstallGeneric(object):
         self.log = logging.getLogger('avocado.test')
         self.srv_manager = ScyllaServiceManager()
 
+    def is_systemd(self):
+        result = process.run("cat /proc/1/comm")
+        return 'systemd' in result.stdout
+
     def try_report_uuid(self):
         uuid_path = '/var/lib/scylla-housekeeping/housekeeping.uuid'
         mark_path = '/var/lib/scylla-housekeeping/housekeeping.uuid.marked'
@@ -320,7 +319,7 @@ class ScyllaInstallGeneric(object):
         else:
             process.run('systemctl status ntpd')
         # verify coredump setup
-        if is_systemd() and 'debian' not in distro_name:
+        if self.is_systemd() and 'debian' not in distro_name:
             result = process.run('coredumpctl info', ignore_status=True)
             assert 'No coredumps found.' == result.stderr.strip(), "Coredump info doesn't work"
             if devlist:
@@ -330,7 +329,7 @@ class ScyllaInstallGeneric(object):
             result = process.run('sysctl kernel.core_pattern')
             assert 'scylla_save_coredump' in result.stdout
         # verify io and sysconfig setup
-        if is_systemd():
+        if self.is_systemd():
             process.run('systemctl status scylla-server')
             process.run('systemctl status collectd')
             #process.run('systemctl status scylla-housekeeping-restart.timer')
