@@ -246,6 +246,10 @@ class ScyllaInstallGeneric(object):
         self.sw_repo_dst = None
         self.log = logging.getLogger('avocado.test')
         self.srv_manager = ScyllaServiceManager()
+        self.is_enterprise = None
+
+    def scylla_pkg(self):
+        return 'scylla'
 
     def is_systemd(self):
         result = process.run("cat /proc/1/comm")
@@ -360,6 +364,15 @@ class ScyllaInstallDebian(ScyllaInstallGeneric):
         process.run('sudo apt-get install -y openjdk-8-jre-headless {}'.format(args), shell=True)
         process.run('sudo update-java-alternatives -s java-1.8.0-openjdk-amd64', shell=True)
 
+    def scylla_pkg(self):
+        """
+        Get package name, compat both of scylla and scylla-enterprise.
+        """
+        if self.is_enterprise is None:
+            result = process.run('sudo apt-cache search scylla-enterprise')
+            self.is_enterprise = True if 'scylla-enterprise' in result.stdout else False
+        return 'scylla-enterprise' if self.is_enterprise else 'scylla'
+
 
 class ScyllaInstallUbuntu1404(ScyllaInstallDebian):
     def prepare_java_repo(self):
@@ -423,6 +436,15 @@ class ScyllaInstallCentOS(ScyllaInstallGeneric):
         self.sw_manager.remove('boost-thread')
         self.sw_manager.remove('boost-system')
         self.sw_manager.remove('abrt')
+
+    def scylla_pkg(self):
+        """
+        Get package name, compat both of scylla and scylla-enterprise.
+        """
+        if self.is_enterprise is None:
+            result = process.run('sudo yum search scylla-enterprise')
+            self.is_enterprise = True if 'scylla-enterprise.x86_64' in result.stdout else False
+        return 'scylla-enterprise' if self.is_enterprise else 'scylla'
 
 
 class ScyllaInstallCentOS7(ScyllaInstallCentOS):
