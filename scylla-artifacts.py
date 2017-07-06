@@ -353,9 +353,11 @@ class ScyllaInstallDebian(ScyllaInstallGeneric):
     def prepare_java_repo(self):
         raise NotImplementedError
 
-    def install_java18(self, request_ver='1.7', args=''):
-        result = process.run('sudo apt-cache show scylla')
+    def install_java18(self, args=''):
+        # fixme: update the version for enterprise in future when it requests java 1.8
+        result = process.run('sudo apt-cache show {}'.format(self.scylla_pkg()))
         ver = re.findall("Version: ([\d.]+)", result.stdout)[0].strip('.')
+        request_ver = '2017.666' if self.is_enterprise else '1.7'
         if parse_version(ver) < parse_version(request_ver):
             self.log.info("Java 1.8 isn't requested by current version {}".format(ver))
             return
@@ -383,9 +385,9 @@ class ScyllaInstallUbuntu1404(ScyllaInstallDebian):
         process.run('sudo curl %s -o %s' % (self.sw_repo_src, self.sw_repo_dst),
                     shell=True)
         process.run('sudo apt-get update')
-        self.install_java18(request_ver='1.7')
+        self.install_java18()
         self.sw_manager.upgrade()
-        return ['scylla']
+        return [self.scylla_pkg()]
 
 
 class ScyllaInstallUbuntu1604(ScyllaInstallDebian):
@@ -394,7 +396,7 @@ class ScyllaInstallUbuntu1604(ScyllaInstallDebian):
         process.run('sudo curl %s -o %s' % (self.sw_repo_src, self.sw_repo_dst),
                     shell=True)
         self.sw_manager.upgrade()
-        return ['scylla']
+        return [self.scylla_pkg()]
 
 
 class ScyllaInstallDebian8(ScyllaInstallDebian):
@@ -405,9 +407,9 @@ class ScyllaInstallDebian8(ScyllaInstallDebian):
         process.run('sudo curl %s -o %s' % (self.sw_repo_src, self.sw_repo_dst),
                     shell=True)
         process.run('sudo apt-get update')
-        self.install_java18(args=' -t jessie-backports', request_ver='1.7')
+        self.install_java18(args=' -t jessie-backports')
         self.sw_manager.upgrade()
-        return ['scylla']
+        return [self.scylla_pkg()]
 
 
 class ScyllaInstallFedora(ScyllaInstallGeneric):
@@ -454,7 +456,7 @@ class ScyllaInstallCentOS7(ScyllaInstallCentOS):
         process.run('sudo curl %s -o %s' % (self.sw_repo_src, self.sw_repo_dst),
                     shell=True)
         self.sw_manager.upgrade()
-        return ['scylla']
+        return [self.scylla_pkg()]
 
 
 class ScyllaInstallAMI(ScyllaInstallGeneric):
