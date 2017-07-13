@@ -101,7 +101,7 @@ class ScyllaPrivateRepoSanity(Test):
         name = self.params.get('name', default='centos7')
         if name in ['centos7']:
             self.private_repo = RHELPrivateRepo(repo_url, pkginfo_url, redirect_url)
-        elif name in ['ubuntu1404']:
+        elif name in ['ubuntu1404', 'ubuntu1604', 'debian8']:
             self.private_repo = DebianPrivateRepo(repo_url, pkginfo_url, redirect_url)
         self.cvdb = CheckVersionDB(self.params.get('host'),
                                    self.params.get('user'),

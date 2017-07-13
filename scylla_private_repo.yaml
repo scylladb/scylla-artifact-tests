@@ -11,6 +11,18 @@ distro: !mux
         pkginfo_url: 'https://repositories.scylladb.com/scylla/scylladb/amos-test/deb/ubuntu/dists/trusty/scylladb-1.7/multiverse/binary-amd64/Packages.gz'
         redirect_url: 'https://s3.amazonaws.com/downloads.scylladb.com/deb/ubuntu/dists/trusty/scylladb-1.7/multiverse/binary-amd64/Packages.gz'
 
+    ubuntu1604:
+        name: 'ubuntu1604'
+        repo_url: 'https://repositories.scylladb.com/scylla/repo/amos-test/ubuntu/scylladb-1.7-xenial.list'
+        pkginfo_url: 'https://repositories.scylladb.com/scylla/scylladb/amos-test/deb/ubuntu/dists/xenial/scylladb-1.7/multiverse/binary-amd64/Packages.gz'
+        redirect_url: 'https://s3.amazonaws.com/downloads.scylladb.com/deb/ubuntu/dists/xenial/scylladb-1.7/multiverse/binary-amd64/Packages.gz'
+
+    debian8:
+        name: 'debian8'
+        repo_url: 'https://repositories.scylladb.com/scylla/repo/amos-test/debian/scylladb-1.7-jessie.list'
+        pkginfo_url: 'https://repositories.scylladb.com/scylla/scylladb/amos-test/deb/debian/dists/jessie/scylladb-1.7/multiverse/binary-amd64/Packages.gz'
+        redirect_url: 'https://s3.amazonaws.com/downloads.scylladb.com/deb/debian/dists/jessie/scylladb-1.7/multiverse/binary-amd64/Packages.gz'
+
 host: ''
 user: ''
 passwd: ''
