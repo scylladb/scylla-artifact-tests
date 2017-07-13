@@ -57,28 +57,28 @@ class CheckVersionDB(object):
 
 
 class PrivateRepo(object):
-    def __init__(self, repo_url, pkginfo_url, redirect_url):
-        self.repo_url = repo_url
+    def __init__(self, sw_repo, pkginfo_url, redirect_url):
+        self.sw_repo = sw_repo
         self.pkginfo_url = pkginfo_url
         self.redirect_url = redirect_url
         self.uuid = self._get_uuid()
 
     def _get_uuid(self):
-        match = re.findall('https://repositories.scylladb.com/scylla/repo/([\w_-]*)/', self.repo_url)
+        match = re.findall('https://repositories.scylladb.com/scylla/repo/([\w_-]*)/', self.sw_repo)
         if len(match) == 1:
             return match[0]
         return None
 
 
 class RHELPrivateRepo(PrivateRepo):
-    def __init__(self, repo_url, pkginfo_url, redirect_url):
-        super(RHELPrivateRepo, self).__init__(repo_url, pkginfo_url, redirect_url)
+    def __init__(self, sw_repo, pkginfo_url, redirect_url):
+        super(RHELPrivateRepo, self).__init__(sw_repo, pkginfo_url, redirect_url)
         self.body_prefix = ['[scylla', 'name=', 'baseurl=', 'enabled=', 'gpgcheck=']
 
 
 class DebianPrivateRepo(PrivateRepo):
-    def __init__(self, repo_url, pkginfo_url, redirect_url):
-        super(DebianPrivateRepo, self).__init__(repo_url, pkginfo_url, redirect_url)
+    def __init__(self, sw_repo, pkginfo_url, redirect_url):
+        super(DebianPrivateRepo, self).__init__(sw_repo, pkginfo_url, redirect_url)
         self.body_prefix = ['deb']
 
 
@@ -95,14 +95,14 @@ class ScyllaPrivateRepoSanity(Test):
         self.log = logging.getLogger('scylla_private_repo')
 
     def setUp(self):
-        repo_url = self.params.get('repo_url')
+        sw_repo = self.params.get('sw_repo')
         pkginfo_url = self.params.get('pkginfo_url')
         redirect_url = self.params.get('redirect_url')
         name = self.params.get('name', default='centos7')
         if name in ['centos7']:
-            self.private_repo = RHELPrivateRepo(repo_url, pkginfo_url, redirect_url)
+            self.private_repo = RHELPrivateRepo(sw_repo, pkginfo_url, redirect_url)
         elif name in ['ubuntu1404', 'ubuntu1604', 'debian8']:
-            self.private_repo = DebianPrivateRepo(repo_url, pkginfo_url, redirect_url)
+            self.private_repo = DebianPrivateRepo(sw_repo, pkginfo_url, redirect_url)
         self.cvdb = CheckVersionDB(self.params.get('host'),
                                    self.params.get('user'),
                                    self.params.get('passwd'))
@@ -122,7 +122,7 @@ class ScyllaPrivateRepoSanity(Test):
             last_id = ret[0][0]
 
         tmp = tempfile.mktemp(prefix='scylla_private_repo')
-        process.run('curl {} -o {}'.format(self.private_repo.repo_url, tmp), verbose=True)
+        process.run('curl {} -o {}'.format(self.private_repo.sw_repo, tmp), verbose=True)
         with open(tmp, 'r') as f:
             repo_body = f.read()
 
