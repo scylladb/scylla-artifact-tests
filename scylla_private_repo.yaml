@@ -1,15 +1,27 @@
 distro: !mux
     centos7:
         name: 'centos7'
-        repo_url: 'https://repositories.scylladb.com/scylla/repo/amos-test/centos/scylladb-1.7.repo'
+        sw_repo: 'https://repositories.scylladb.com/scylla/repo/amos-test/centos/scylladb-1.7.repo'
         pkginfo_url: 'https://repositories.scylladb.com/scylla/scylladb/amos-test/rpm/scylla/centos/scylladb-1.7/7Server/x86_64/repodata/repomd.xml'
         redirect_url: 'http://downloads.scylladb.com/rpm/centos/scylladb-1.7/7Server/x86_64/repodata/repomd.xml'
 
     ubuntu1404:
         name: 'ubuntu1404'
-        repo_url: 'https://repositories.scylladb.com/scylla/repo/amos-test/ubuntu/scylladb-1.7-trusty.list'
+        sw_repo: 'https://repositories.scylladb.com/scylla/repo/amos-test/ubuntu/scylladb-1.7-trusty.list'
         pkginfo_url: 'https://repositories.scylladb.com/scylla/scylladb/amos-test/deb/ubuntu/dists/trusty/scylladb-1.7/multiverse/binary-amd64/Packages.gz'
         redirect_url: 'https://s3.amazonaws.com/downloads.scylladb.com/deb/ubuntu/dists/trusty/scylladb-1.7/multiverse/binary-amd64/Packages.gz'
+
+    ubuntu1604:
+        name: 'ubuntu1604'
+        sw_repo: 'https://repositories.scylladb.com/scylla/repo/amos-test/ubuntu/scylladb-1.7-xenial.list'
+        pkginfo_url: 'https://repositories.scylladb.com/scylla/scylladb/amos-test/deb/ubuntu/dists/xenial/scylladb-1.7/multiverse/binary-amd64/Packages.gz'
+        redirect_url: 'https://s3.amazonaws.com/downloads.scylladb.com/deb/ubuntu/dists/xenial/scylladb-1.7/multiverse/binary-amd64/Packages.gz'
+
+    debian8:
+        name: 'debian8'
+        sw_repo: 'https://repositories.scylladb.com/scylla/repo/amos-test/debian/scylladb-1.7-jessie.list'
+        pkginfo_url: 'https://repositories.scylladb.com/scylla/scylladb/amos-test/deb/debian/dists/jessie/scylladb-1.7/multiverse/binary-amd64/Packages.gz'
+        redirect_url: 'https://s3.amazonaws.com/downloads.scylladb.com/deb/debian/dists/jessie/scylladb-1.7/multiverse/binary-amd64/Packages.gz'
 
 host: ''
 user: ''
