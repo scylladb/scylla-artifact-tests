@@ -639,8 +639,8 @@ class ScyllaInstallAMI(ScyllaInstallGeneric):
 
     def run(self):
         self.log.info("Testing AMI, let's just check if the DB is up...")
-        self.enhanced_net_enabled()
         self.srv_manager.wait_services_up()
+        self.enhanced_net_enabled()
         self.try_report_uuid()
 
 
