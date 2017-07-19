@@ -606,6 +606,31 @@ class ScyllaInstallAMI(ScyllaInstallGeneric):
         else:
             self.log.info("The instance (%s) doesn't support enahanced networking!", result.stdout)
 
+        result = process.run('scylla --version')
+        ver = re.findall("(\d+.\d+)", result.stdout)[0]
+        request_ver = '2017.666' if self.is_enterprise else '2.0'
+        if parse_version(ver) < parse_version(request_ver) and maintype == 'i3':
+            result = process.run('cat /etc/scylla.d/io.conf |grep -v \#',
+                                 shell=True,
+                                 ignore_status=True,
+                                 verbose=True)
+            assert result.stdout != ''
+            result = process.run('cat /etc/scylla.d/cpuset.conf |grep -v \#',
+                                 shell=True,
+                                 ignore_status=True,
+                                 verbose=True)
+            assert result.stdout != ''
+
+            result = process.run('cat /proc/interrupts |grep eth', shell=True, verbose=True)
+            affinity_list = []
+            for i in re.findall("\s(\d+):", result.stdout):
+                result = process.run('cat /proc/irq/{}/smp_affinity'.format(i), verbose=True)
+                if subtype == '16xlarge':
+                    assert result.stdout == '00000000,00000000,00000000,00000001'
+                else:
+                    assert result.stdout not in affinity_list, 'smp affinity of different interrupt should be different'
+                affinity_list.append(result.stdout)
+
     def run(self):
         self.log.info("Testing AMI, let's just check if the DB is up...")
         self.enhanced_net_enabled()
