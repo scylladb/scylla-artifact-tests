@@ -504,11 +504,17 @@ class ScyllaInstallAMI(ScyllaInstallGeneric):
                                  ignore_status=True,
                                  verbose=True)
             assert result.stdout != ''
+            num_io_queues = re.findall("--num-io-queues\s+(\d+)", result.stdout)[0]
+
             result = process.run('cat /etc/scylla.d/cpuset.conf |grep -v \#',
                                  shell=True,
                                  ignore_status=True,
                                  verbose=True)
             assert result.stdout != ''
+            cpuset_start, cpuset_end = re.findall("--cpuset\s+(\d+)-(\d+)", result.stdout)[0]
+
+            if subtype != '16xlarge':
+                assert cpuset_start == '0' and int(cpuset_end) == int(num_io_queues) - 1
 
             result = process.run('cat /proc/interrupts |grep eth', shell=True, verbose=True)
             affinity_list = []
