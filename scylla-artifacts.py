@@ -493,38 +493,46 @@ class ScyllaInstallAMI(ScyllaInstallGeneric):
         elif maintype in ['c3', 'c4', 'd2', 'i2', 'r3'] or (maintype == 'm4'):
             self.check_used_driver('ixgbevf')
         else:
+            process.run('ethtool -i eth0', verbose=True)
             self.log.info("The instance (%s) doesn't support enahanced networking!", result.stdout)
 
         result = process.run('scylla --version')
         ver = re.findall("(\d+.\d+)", result.stdout)[0]
         request_ver = '2017.666' if self.is_enterprise else '2.0'
-        if parse_version(ver) < parse_version(request_ver) and maintype == 'i3':
-            result = process.run('cat /etc/scylla.d/io.conf |grep -v \#',
-                                 shell=True,
-                                 ignore_status=True,
-                                 verbose=True)
-            assert result.stdout != ''
-            num_io_queues = re.findall("--num-io-queues\s+(\d+)", result.stdout)[0]
 
-            result = process.run('cat /etc/scylla.d/cpuset.conf |grep -v \#',
-                                 shell=True,
-                                 ignore_status=True,
-                                 verbose=True)
-            assert result.stdout != ''
+        result = process.run('cat /etc/scylla.d/io.conf |grep -v \#',
+                             shell=True,
+                             ignore_status=True,
+                             verbose=True)
+        assert result.stdout != ''
+        num_io_queues = re.findall("--num-io-queues\s+(\d+)", result.stdout)[0]
+
+        result = process.run('cat /etc/scylla.d/cpuset.conf |grep -v \#',
+                             shell=True,
+                             ignore_status=True,
+                             verbose=True)
+        assert result.stdout != ''
+        cpuset_param = re.findall("--cpuset\s+(.*)", result.stdout)
+        if cpuset_param and '-' in cpuset_param:
             cpuset_start, cpuset_end = re.findall("--cpuset\s+(\d+)-(\d+)", result.stdout)[0]
+        else:
+            cpuset_start = re.findall("--cpuset\s+(\d+)", result.stdout)[0]
+            cpuset_end = 0
 
+        if parse_version(ver) < parse_version(request_ver) and maintype == 'i3':
             if subtype != '16xlarge':
                 assert cpuset_start == '0' and int(cpuset_end) == int(num_io_queues) - 1
 
-            result = process.run('cat /proc/interrupts |grep eth', shell=True, verbose=True)
-            affinity_list = []
-            for i in re.findall("\s(\d+):", result.stdout):
-                result = process.run('cat /proc/irq/{}/smp_affinity'.format(i), verbose=True)
+        result = process.run('cat /proc/interrupts |grep eth', shell=True, verbose=True)
+        affinity_list = []
+        for i in re.findall("\s(\d+):", result.stdout):
+            result = process.run('cat /proc/irq/{}/smp_affinity'.format(i), verbose=True)
+            if parse_version(ver) < parse_version(request_ver) and maintype == 'i3':
                 if subtype == '16xlarge':
                     assert result.stdout == '00000000,00000000,00000000,00000001'
                 else:
                     assert result.stdout not in affinity_list, 'smp affinity of different interrupt should be different'
-                affinity_list.append(result.stdout)
+            affinity_list.append(result.stdout)
 
     def run(self):
         self.log.info("Testing AMI, let's just check if the DB is up...")
