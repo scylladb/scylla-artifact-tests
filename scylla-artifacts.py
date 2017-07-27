@@ -526,7 +526,7 @@ class ScyllaInstallAMI(ScyllaInstallGeneric):
         result = process.run('cat /proc/interrupts |grep eth', shell=True, verbose=True)
         affinity_list = []
         for i in re.findall("\s(\d+):", result.stdout):
-            result = process.run('cat /proc/irq/{}/smp_affinity'.format(i), verbose=True)
+            result = process.run('sudo cat /proc/irq/{}/smp_affinity'.format(i), verbose=True)
             if parse_version(ver) < parse_version(request_ver) and maintype == 'i3':
                 if subtype == '16xlarge':
                     assert result.stdout == '00000000,00000000,00000000,00000001'
