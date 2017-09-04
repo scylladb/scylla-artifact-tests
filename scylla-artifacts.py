@@ -481,6 +481,7 @@ class ScyllaInstallAMI(ScyllaInstallGeneric):
         Check the enhanced network is enabled for some special instances.
         """
         result = process.run('curl -s http://169.254.169.254/latest/meta-data/instance-type')
+        instance_type = result.stdout
         if '.' in result.stdout:
             maintype, subtype = result.stdout.split('.')
         else:
@@ -500,38 +501,46 @@ class ScyllaInstallAMI(ScyllaInstallGeneric):
         ver = re.findall("(\d+.\d+)", result.stdout)[0]
         request_ver = '2017.666' if self.is_enterprise else '2.0'
 
+        conf_dict = {
+            'i3.large': ['SEASTAR_IO="--num-io-queues 2 --max-io-requests 192"', 'CPUSET="--cpuset 0-1 "'],
+            'i3.xlarge': ['SEASTAR_IO="--num-io-queues 4 --max-io-requests 192"', 'CPUSET="--cpuset 0-3 "'],
+            'i3.2xlarge': ['SEASTAR_IO="--num-io-queues 8 --max-io-requests 192"', 'CPUSET="--cpuset 0-7 "'],
+            'i3.4xlarge': ['SEASTAR_IO="--num-io-queues 14 --max-io-requests 384"', 'CPUSET="--cpuset 1-7,9-15 "'],
+            'i3.8xlarge': ['SEASTAR_IO="--num-io-queues 30 --max-io-requests 768"', 'CPUSET="--cpuset 1-15,17-31 "'],
+            'i3.16xlarge': ['SEASTAR_IO="--num-io-queues 62 --max-io-requests 1536"', 'CPUSET="--cpuset 1-31,33-63 "'],
+            'c3.large': ['SEASTAR_IO="--num-io-queues 2 --max-io-requests 32"', 'CPUSET="--cpuset 0-1 "'],
+            'c3.8xlarge': ['SEASTAR_IO="--num-io-queues 8 --max-io-requests 32"', 'CPUSET="--cpuset 1-15,17-31 "'],
+            'm3.2xlarge': ['SEASTAR_IO="--num-io-queues 8 --max-io-requests 32"', 'CPUSET="--cpuset 0-7 "'],
+            'm3.medium': ['SEASTAR_IO="--num-io-queues 1 --max-io-requests 32"', 'CPUSET="--cpuset 0 "'],
+            'i2.4xlarge': ['SEASTAR_IO="--num-io-queues 14 --max-io-requests 128"', 'CPUSET="--cpuset 1-7,9-15 "']
+        }
+
         result = process.run('cat /etc/scylla.d/io.conf |grep -v \#',
                              shell=True,
                              ignore_status=True,
                              verbose=True)
-        assert result.stdout != ''
-        num_io_queues = re.findall("--num-io-queues\s+(\d+)", result.stdout)[0]
+        io_conf = result.stdout.strip()
 
         result = process.run('cat /etc/scylla.d/cpuset.conf |grep -v \#',
                              shell=True,
                              ignore_status=True,
                              verbose=True)
-        assert result.stdout != ''
-        cpuset_param = re.findall("--cpuset\s+(.*)", result.stdout)
-        if cpuset_param and '-' in cpuset_param:
-            cpuset_start, cpuset_end = re.findall("--cpuset\s+(\d+)-(\d+)", result.stdout)[0]
-        else:
-            cpuset_start = re.findall("--cpuset\s+(\d+)", result.stdout)[0]
-            cpuset_end = 0
+        cpuset_conf = result.stdout.strip()
 
-        if parse_version(ver) < parse_version(request_ver) and maintype == 'i3':
-            if subtype != '16xlarge':
-                assert cpuset_start == '0' and int(cpuset_end) == int(num_io_queues) - 1
+        if parse_version(ver) >= parse_version(request_ver) and instance_type in conf_dict.keys():
+            assert io_conf == conf_dict[instance_type][0]
+            assert cpuset_conf == conf_dict[instance_type][1]
+            self.log.info("io.conf and cpuset.conf are all good.")
 
         result = process.run('cat /proc/interrupts |grep eth', shell=True, verbose=True)
         affinity_list = []
         for i in re.findall("\s(\d+):", result.stdout):
             result = process.run('sudo cat /proc/irq/{}/smp_affinity'.format(i), verbose=True)
-            if parse_version(ver) < parse_version(request_ver) and maintype == 'i3':
-                if subtype == '16xlarge':
-                    assert result.stdout == '00000000,00000000,00000000,00000001'
-                else:
+            if parse_version(ver) >= parse_version(request_ver) and maintype == 'i3':
+                if subtype in ['large', 'xlarge', '2xlarge']:
                     assert result.stdout not in affinity_list, 'smp affinity of different interrupt should be different'
+                else:
+                    assert len(set(affinity_list)) <= 2
             affinity_list.append(result.stdout)
 
     def run(self):
