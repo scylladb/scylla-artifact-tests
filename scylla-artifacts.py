@@ -412,6 +412,18 @@ class ScyllaInstallDebian8(ScyllaInstallDebian):
         return [self.scylla_pkg()]
 
 
+class ScyllaInstallDebian9(ScyllaInstallDebian):
+    def prepare_java_repo(self):
+        pass
+
+    def env_setup(self):
+        process.run('sudo curl %s -o %s' % (self.sw_repo_src, self.sw_repo_dst),
+                    shell=True)
+        process.run('sudo apt-get update')
+        self.sw_manager.upgrade()
+        return [self.scylla_pkg()]
+
+
 class ScyllaInstallFedora(ScyllaInstallGeneric):
 
     def __init__(self, sw_repo):
@@ -584,6 +596,8 @@ class ScyllaArtifactSanity(Test):
                         detected_distro.release == '04')
         debian_8 = (detected_distro.name.lower() == 'debian' and
                     detected_distro.version == '8')
+        debian_9 = (detected_distro.name.lower() == 'debian' and
+                    detected_distro.version == '9')
         centos_7 = (detected_distro.name.lower() == 'centos' and
                     detected_distro.version == '7')
 
@@ -600,6 +614,9 @@ class ScyllaArtifactSanity(Test):
 
         elif debian_8:
             installer = ScyllaInstallDebian8(sw_repo=sw_repo)
+
+        elif debian_9:
+            installer = ScyllaInstallDebian9(sw_repo=sw_repo)
 
         elif fedora_22:
             installer = ScyllaInstallFedora22(sw_repo=sw_repo)
