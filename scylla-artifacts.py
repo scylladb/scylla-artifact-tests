@@ -598,7 +598,7 @@ class ScyllaArtifactSanity(Test):
                     detected_distro.version == '8')
         debian_9 = (detected_distro.name.lower() == 'debian' and
                     detected_distro.version == '9')
-        centos_7 = (detected_distro.name.lower() == 'centos' and
+        centos_7 = (detected_distro.name.lower() in ['centos', 'redhat'] and
                     detected_distro.version == '7')
 
         installer = None
