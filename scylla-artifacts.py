@@ -74,6 +74,10 @@ class ScyllaDnfBackend(DnfBackend):
 
 class ScyllaAptBackend(AptBackend):
 
+    def __init__(self):
+        process.run('sudo apt-get install -y apt-transport-https', shell=True)
+        super(ScyllaAptBackend, self).__init__()
+
     def upgrade(self, name=None):
         """
         Upgrade all packages of the system with eventual new versions.
