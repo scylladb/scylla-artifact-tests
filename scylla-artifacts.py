@@ -395,6 +395,9 @@ class ScyllaInstallUbuntu1404(ScyllaInstallDebian):
 
 
 class ScyllaInstallUbuntu1604(ScyllaInstallDebian):
+    def prepare_extend_repo(self):
+        process.run('sudo apt-get install software-properties-common -y', shell=True)
+        process.run('sudo add-apt-repository -y ppa:scylladb/ppa', shell=True)
 
     def env_setup(self):
         process.run('sudo curl %s -o %s' % (self.sw_repo_src, self.sw_repo_dst),
