@@ -365,7 +365,6 @@ class ScyllaInstallDebian(ScyllaInstallGeneric):
         if parse_version(ver) < parse_version(request_ver):
             self.log.info("Java 1.8 isn't requested by current version {}".format(ver))
             return
-        self.prepare_extend_repo()
         process.run('sudo apt-get update')
         process.run('sudo apt-get install -y openjdk-8-jre-headless {}'.format(args), shell=True)
         process.run('sudo update-java-alternatives -s java-1.8.0-openjdk-amd64', shell=True)
@@ -389,6 +388,7 @@ class ScyllaInstallUbuntu1404(ScyllaInstallDebian):
     def env_setup(self):
         process.run('sudo curl %s -o %s' % (self.sw_repo_src, self.sw_repo_dst),
                     shell=True)
+        self.prepare_extend_repo()
         process.run('sudo apt-get update')
         self.install_java18()
         self.sw_manager.upgrade()
@@ -403,6 +403,7 @@ class ScyllaInstallUbuntu1604(ScyllaInstallDebian):
     def env_setup(self):
         process.run('sudo curl %s -o %s' % (self.sw_repo_src, self.sw_repo_dst),
                     shell=True)
+        self.prepare_extend_repo()
         self.sw_manager.upgrade()
         return [self.scylla_pkg()]
 
@@ -415,6 +416,7 @@ class ScyllaInstallDebian8(ScyllaInstallDebian):
     def env_setup(self):
         process.run('sudo curl %s -o %s' % (self.sw_repo_src, self.sw_repo_dst),
                     shell=True)
+        self.prepare_extend_repo()
         process.run('sudo apt-get update')
         self.install_java18(args=' -t jessie-backports')
         self.sw_manager.upgrade()
@@ -428,6 +430,7 @@ class ScyllaInstallDebian9(ScyllaInstallDebian):
     def env_setup(self):
         process.run('sudo curl %s -o %s' % (self.sw_repo_src, self.sw_repo_dst),
                     shell=True)
+        self.prepare_extend_repo()
         process.run('sudo apt-get update')
         self.sw_manager.upgrade()
         return [self.scylla_pkg()]
