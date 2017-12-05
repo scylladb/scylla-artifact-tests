@@ -411,7 +411,8 @@ class ScyllaInstallUbuntu1604(ScyllaInstallDebian):
 class ScyllaInstallDebian8(ScyllaInstallDebian):
     def prepare_extend_repo(self):
         process.run("echo 'deb http://http.debian.net/debian jessie-backports main' > /etc/apt/sources.list.d/jessie-backports.list", shell=True)
-        process.run("apt-key adv --fetch-keys http://download.opensuse.org/repositories/home:/scylladb:/scylla-3rdparty-jessie/Debian_8.0/Release.key")
+        process.run("apt-get install gnupg-curl -y")
+        process.run("apt-key adv --fetch-keys https://download.opensuse.org/repositories/home:/scylladb:/scylla-3rdparty-jessie/Debian_8.0/Release.key")
 
     def env_setup(self):
         process.run('sudo curl %s -o %s' % (self.sw_repo_src, self.sw_repo_dst),
