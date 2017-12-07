@@ -354,7 +354,7 @@ class ScyllaInstallDebian(ScyllaInstallGeneric):
         super(ScyllaInstallDebian, self).__init__(sw_repo)
         self.sw_repo_dst = '/etc/apt/sources.list.d/scylla.list'
 
-    def prepare_java_repo(self):
+    def prepare_extend_repo(self):
         raise NotImplementedError
 
     def install_java18(self, args=''):
@@ -365,7 +365,6 @@ class ScyllaInstallDebian(ScyllaInstallGeneric):
         if parse_version(ver) < parse_version(request_ver):
             self.log.info("Java 1.8 isn't requested by current version {}".format(ver))
             return
-        self.prepare_java_repo()
         process.run('sudo apt-get update')
         process.run('sudo apt-get install -y openjdk-8-jre-headless {}'.format(args), shell=True)
         process.run('sudo update-java-alternatives -s java-1.8.0-openjdk-amd64', shell=True)
@@ -381,13 +380,15 @@ class ScyllaInstallDebian(ScyllaInstallGeneric):
 
 
 class ScyllaInstallUbuntu1404(ScyllaInstallDebian):
-    def prepare_java_repo(self):
+    def prepare_extend_repo(self):
         process.run('sudo apt-get install software-properties-common -y', shell=True)
         process.run('sudo add-apt-repository -y ppa:openjdk-r/ppa', shell=True)
+        process.run('sudo add-apt-repository -y ppa:scylladb/ppa', shell=True)
 
     def env_setup(self):
         process.run('sudo curl %s -o %s' % (self.sw_repo_src, self.sw_repo_dst),
                     shell=True)
+        self.prepare_extend_repo()
         process.run('sudo apt-get update')
         self.install_java18()
         self.sw_manager.upgrade()
@@ -395,21 +396,29 @@ class ScyllaInstallUbuntu1404(ScyllaInstallDebian):
 
 
 class ScyllaInstallUbuntu1604(ScyllaInstallDebian):
+    def prepare_extend_repo(self):
+        process.run('sudo apt-get install software-properties-common -y', shell=True)
+        process.run('sudo add-apt-repository -y ppa:scylladb/ppa', shell=True)
 
     def env_setup(self):
         process.run('sudo curl %s -o %s' % (self.sw_repo_src, self.sw_repo_dst),
                     shell=True)
+        self.prepare_extend_repo()
         self.sw_manager.upgrade()
         return [self.scylla_pkg()]
 
 
 class ScyllaInstallDebian8(ScyllaInstallDebian):
-    def prepare_java_repo(self):
+    def prepare_extend_repo(self):
         process.run("echo 'deb http://http.debian.net/debian jessie-backports main' > /etc/apt/sources.list.d/jessie-backports.list", shell=True)
+        process.run("apt-get install gnupg-curl -y")
+        process.run("apt-key adv --fetch-keys https://download.opensuse.org/repositories/home:/scylladb:/scylla-3rdparty-jessie/Debian_8.0/Release.key")
+        process.run("echo 'deb http://download.opensuse.org/repositories/home:/scylladb:/scylla-3rdparty-jessie/Debian_8.0/ /' > /etc/apt/sources.list.d/scylla-3rdparty.list", shell=True)
 
     def env_setup(self):
         process.run('sudo curl %s -o %s' % (self.sw_repo_src, self.sw_repo_dst),
                     shell=True)
+        self.prepare_extend_repo()
         process.run('sudo apt-get update')
         self.install_java18(args=' -t jessie-backports')
         self.sw_manager.upgrade()
@@ -417,12 +426,13 @@ class ScyllaInstallDebian8(ScyllaInstallDebian):
 
 
 class ScyllaInstallDebian9(ScyllaInstallDebian):
-    def prepare_java_repo(self):
+    def prepare_extend_repo(self):
         pass
 
     def env_setup(self):
         process.run('sudo curl %s -o %s' % (self.sw_repo_src, self.sw_repo_dst),
                     shell=True)
+        self.prepare_extend_repo()
         process.run('sudo apt-get update')
         self.sw_manager.upgrade()
         return [self.scylla_pkg()]
