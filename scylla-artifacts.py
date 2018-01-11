@@ -20,6 +20,8 @@ from avocado.utils.software_manager import YumBackend
 from avocado.utils.software_manager import DnfBackend
 from avocado.utils.software_manager import ZypperBackend
 from avocado.utils.software_manager import SystemInspector
+from avocado.utils import path as utils_path
+
 
 SCRIPTLET_FAILURE_LIST = []
 
@@ -72,6 +74,9 @@ class ScyllaAptBackend(AptBackend):
     def __init__(self):
         process.run('sudo apt-get install -y apt-transport-https', shell=True)
         super(ScyllaAptBackend, self).__init__()
+        executable = utils_path.find_command('apt-get')
+        self.base_command = executable + ' --yes'
+
 
     def upgrade(self, name=None):
         """
