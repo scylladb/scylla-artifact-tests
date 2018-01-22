@@ -20,6 +20,8 @@ from avocado.utils.software_manager import YumBackend
 from avocado.utils.software_manager import DnfBackend
 from avocado.utils.software_manager import ZypperBackend
 from avocado.utils.software_manager import SystemInspector
+from avocado.utils import path as utils_path
+
 
 SCRIPTLET_FAILURE_LIST = []
 
@@ -72,6 +74,9 @@ class ScyllaAptBackend(AptBackend):
     def __init__(self):
         process.run('sudo apt-get install -y apt-transport-https', shell=True)
         super(ScyllaAptBackend, self).__init__()
+        executable = utils_path.find_command('apt-get')
+        self.base_command = executable + ' --yes'
+
 
     def upgrade(self, name=None):
         """
@@ -399,11 +404,14 @@ class ScyllaInstallUbuntu1604(ScyllaInstallDebian):
     def prepare_extend_repo(self):
         process.run('sudo apt-get install software-properties-common -y', shell=True)
         process.run('sudo add-apt-repository -y ppa:scylladb/ppa', shell=True)
+        process.run("sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 6B2BFD3660EF3F5B")
+        process.run("sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 17723034C56D4B19")
 
     def env_setup(self):
         process.run('sudo curl %s -o %s' % (self.sw_repo_src, self.sw_repo_dst),
                     shell=True)
         self.prepare_extend_repo()
+        process.run('sudo apt-get update')
         self.sw_manager.upgrade()
         return [self.scylla_pkg()]
 
@@ -413,6 +421,7 @@ class ScyllaInstallDebian8(ScyllaInstallDebian):
         process.run("echo 'deb http://http.debian.net/debian jessie-backports main' > /etc/apt/sources.list.d/jessie-backports.list", shell=True)
         process.run("apt-get install gnupg-curl -y")
         process.run("apt-key adv --fetch-keys https://download.opensuse.org/repositories/home:/scylladb:/scylla-3rdparty-jessie/Debian_8.0/Release.key")
+        process.run("sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 17723034C56D4B19")
         process.run("echo 'deb http://download.opensuse.org/repositories/home:/scylladb:/scylla-3rdparty-jessie/Debian_8.0/ /' > /etc/apt/sources.list.d/scylla-3rdparty.list", shell=True)
 
     def env_setup(self):
