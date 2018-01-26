@@ -24,6 +24,7 @@ from avocado.utils import path as utils_path
 
 
 SCRIPTLET_FAILURE_LIST = []
+TEST_PARAMS = {}
 
 
 def _search_scriptlet_failure(result):
@@ -76,7 +77,8 @@ class ScyllaAptBackend(AptBackend):
         super(ScyllaAptBackend, self).__init__()
         executable = utils_path.find_command('apt-get')
         self.base_command = executable + ' --yes'
-
+        if TEST_PARAMS.get('allow_unauth', default=False):
+            self.base_command += ' --allow-unauthenticated'
 
     def upgrade(self, name=None):
         """
@@ -602,11 +604,13 @@ class ScyllaArtifactSanity(Test):
         return os.path.join(tmpdir, 'scylla-setup-done')
 
     def scylla_setup(self):
+        global TEST_PARAMS
         # Let's start the logs thread before package install
         self._log_collection_thread = threading.Thread(target=get_scylla_logs)
         self._log_collection_thread.start()
         sw_repo = self.params.get('sw_repo', default=None)
         ami = self.params.get('ami', default=False) is True
+        TEST_PARAMS = self.params
 
         detected_distro = distro.detect()
         fedora_22 = (detected_distro.name.lower() == 'fedora' and
