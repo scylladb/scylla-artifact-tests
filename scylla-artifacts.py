@@ -278,6 +278,8 @@ class ScyllaInstallGeneric(object):
         wait.wait_for(lambda: os.path.exists(uuid_path), timeout=30, step=5,
                       text='Waiting for housekeeping.uuid generated')
 
+        assert os.path.exists(uuid_path), "housekeeping.uuid doesn't exist"
+
         if os.path.exists(uuid_path) and not os.path.exists(mark_path):
             with open(uuid_path) as uuid_file:
                 uuid = uuid_file.read().strip()
