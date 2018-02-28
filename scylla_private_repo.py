@@ -122,7 +122,7 @@ class ScyllaPrivateRepoSanity(Test):
             last_id = ret[0][0]
 
         tmp = tempfile.mktemp(prefix='scylla_private_repo')
-        process.run('curl {} -o {}'.format(self.private_repo.repo_url, tmp), verbose=True)
+        process.run('curl {} -o {} -L'.format(self.private_repo.repo_url, tmp), verbose=True)
         with open(tmp, 'r') as f:
             repo_body = f.read()
 

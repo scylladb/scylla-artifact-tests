@@ -369,7 +369,7 @@ class ScyllaInstallDebian(ScyllaInstallGeneric):
 class ScyllaInstallUbuntu1404(ScyllaInstallDebian):
 
     def env_setup(self):
-        process.run('sudo curl %s -o %s' % (self.sw_repo_src, self.sw_repo_dst),
+        process.run('sudo curl %s -o %s -L' % (self.sw_repo_src, self.sw_repo_dst),
                     shell=True)
         process.run('sudo apt-get update')
         result = process.run('sudo apt-cache show scylla')
@@ -387,7 +387,7 @@ class ScyllaInstallUbuntu1404(ScyllaInstallDebian):
 class ScyllaInstallUbuntu1604(ScyllaInstallDebian):
 
     def env_setup(self):
-        process.run('sudo curl %s -o %s' % (self.sw_repo_src, self.sw_repo_dst),
+        process.run('sudo curl %s -o %s -L' % (self.sw_repo_src, self.sw_repo_dst),
                     shell=True)
         self.sw_manager.upgrade()
         return ['scylla']
@@ -395,7 +395,7 @@ class ScyllaInstallUbuntu1604(ScyllaInstallDebian):
 
 class ScyllaInstallDebian8(ScyllaInstallDebian):
     def env_setup(self):
-        process.run('sudo curl %s -o %s' % (self.sw_repo_src, self.sw_repo_dst),
+        process.run('sudo curl %s -o %s -L' % (self.sw_repo_src, self.sw_repo_dst),
                     shell=True)
         process.run('sudo apt-get update')
         result = process.run('sudo apt-cache show scylla')
@@ -419,7 +419,7 @@ class ScyllaInstallFedora(ScyllaInstallGeneric):
 class ScyllaInstallFedora22(ScyllaInstallFedora):
 
     def env_setup(self):
-        process.run('sudo curl %s -o %s' % (self.sw_repo_src, self.sw_repo_dst),
+        process.run('sudo curl %s -o %s -L' % (self.sw_repo_src, self.sw_repo_dst),
                     shell=True)
         self.sw_manager.upgrade()
         return ['scylla']
@@ -450,7 +450,7 @@ class ScyllaInstallCentOS7(ScyllaInstallCentOS):
 
     def env_setup(self):
         self._centos_remove_system_packages()
-        process.run('sudo curl %s -o %s' % (self.sw_repo_src, self.sw_repo_dst),
+        process.run('sudo curl %s -o %s -L' % (self.sw_repo_src, self.sw_repo_dst),
                     shell=True)
         self.sw_manager.upgrade()
         return ['scylla']
