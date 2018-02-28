@@ -393,7 +393,7 @@ class ScyllaInstallUbuntu1404(ScyllaInstallDebian):
         process.run('sudo add-apt-repository -y ppa:scylladb/ppa', shell=True)
 
     def env_setup(self):
-        process.run('sudo curl %s -o %s' % (self.sw_repo_src, self.sw_repo_dst),
+        process.run('sudo curl %s -o %s -L' % (self.sw_repo_src, self.sw_repo_dst),
                     shell=True)
         self.prepare_extend_repo()
         process.run('sudo apt-get update')
@@ -410,7 +410,7 @@ class ScyllaInstallUbuntu1604(ScyllaInstallDebian):
         process.run("sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 17723034C56D4B19")
 
     def env_setup(self):
-        process.run('sudo curl %s -o %s' % (self.sw_repo_src, self.sw_repo_dst),
+        process.run('sudo curl %s -o %s -L' % (self.sw_repo_src, self.sw_repo_dst),
                     shell=True)
         self.prepare_extend_repo()
         process.run('sudo apt-get update')
@@ -427,7 +427,7 @@ class ScyllaInstallDebian8(ScyllaInstallDebian):
         process.run("echo 'deb http://download.opensuse.org/repositories/home:/scylladb:/scylla-3rdparty-jessie/Debian_8.0/ /' > /etc/apt/sources.list.d/scylla-3rdparty.list", shell=True)
 
     def env_setup(self):
-        process.run('sudo curl %s -o %s' % (self.sw_repo_src, self.sw_repo_dst),
+        process.run('sudo curl %s -o %s -L' % (self.sw_repo_src, self.sw_repo_dst),
                     shell=True)
         self.prepare_extend_repo()
         process.run('sudo apt-get update')
@@ -441,7 +441,7 @@ class ScyllaInstallDebian9(ScyllaInstallDebian):
         pass
 
     def env_setup(self):
-        process.run('sudo curl %s -o %s' % (self.sw_repo_src, self.sw_repo_dst),
+        process.run('sudo curl %s -o %s -L' % (self.sw_repo_src, self.sw_repo_dst),
                     shell=True)
         self.prepare_extend_repo()
         process.run('sudo apt-get update')
@@ -459,7 +459,7 @@ class ScyllaInstallFedora(ScyllaInstallGeneric):
 class ScyllaInstallFedora22(ScyllaInstallFedora):
 
     def env_setup(self):
-        process.run('sudo curl %s -o %s' % (self.sw_repo_src, self.sw_repo_dst),
+        process.run('sudo curl %s -o %s -L' % (self.sw_repo_src, self.sw_repo_dst),
                     shell=True)
         self.sw_manager.upgrade()
         return ['scylla']
@@ -490,7 +490,7 @@ class ScyllaInstallCentOS7(ScyllaInstallCentOS):
 
     def env_setup(self):
         self._centos_remove_system_packages()
-        process.run('sudo curl %s -o %s' % (self.sw_repo_src, self.sw_repo_dst),
+        process.run('sudo curl %s -o %s -L' % (self.sw_repo_src, self.sw_repo_dst),
                     shell=True)
         self.sw_manager.upgrade()
         return [self.scylla_pkg()]
