@@ -275,6 +275,10 @@ class ScyllaInstallGeneric(object):
             process.run(cmd % uuid, shell=True, verbose=True)
             process.run('sudo -u scylla touch %s' % mark_path, verbose=True)
 
+    def download_scylla_repo(self):
+        process.run('sudo curl %s -o %s -L' % (self.sw_repo_src, self.sw_repo_dst),
+                    shell=True)
+
     def run(self):
         wait.wait_for(self.sw_manager.upgrade, timeout=300, step=30,
                       text="Wait until system is up to date...")
@@ -369,8 +373,7 @@ class ScyllaInstallDebian(ScyllaInstallGeneric):
 class ScyllaInstallUbuntu1404(ScyllaInstallDebian):
 
     def env_setup(self):
-        process.run('sudo curl %s -o %s -L' % (self.sw_repo_src, self.sw_repo_dst),
-                    shell=True)
+        self.download_scylla_repo()
         process.run('sudo apt-get update')
         result = process.run('sudo apt-cache show scylla')
         ver = re.findall("Version: ([\d.]+)", result.stdout)[0].strip('.')
@@ -389,14 +392,14 @@ class ScyllaInstallUbuntu1604(ScyllaInstallDebian):
     def env_setup(self):
         process.run('sudo curl %s -o %s -L' % (self.sw_repo_src, self.sw_repo_dst),
                     shell=True)
+        self.download_scylla_repo()
         self.sw_manager.upgrade()
         return ['scylla']
 
 
 class ScyllaInstallDebian8(ScyllaInstallDebian):
     def env_setup(self):
-        process.run('sudo curl %s -o %s -L' % (self.sw_repo_src, self.sw_repo_dst),
-                    shell=True)
+        self.download_scylla_repo()
         process.run('sudo apt-get update')
         result = process.run('sudo apt-cache show scylla')
         ver = re.findall("Version: (.*)", result.stdout)[0]
@@ -419,8 +422,7 @@ class ScyllaInstallFedora(ScyllaInstallGeneric):
 class ScyllaInstallFedora22(ScyllaInstallFedora):
 
     def env_setup(self):
-        process.run('sudo curl %s -o %s -L' % (self.sw_repo_src, self.sw_repo_dst),
-                    shell=True)
+        self.download_scylla_repo()
         self.sw_manager.upgrade()
         return ['scylla']
 
@@ -450,8 +452,7 @@ class ScyllaInstallCentOS7(ScyllaInstallCentOS):
 
     def env_setup(self):
         self._centos_remove_system_packages()
-        process.run('sudo curl %s -o %s -L' % (self.sw_repo_src, self.sw_repo_dst),
-                    shell=True)
+        self.download_scylla_repo()
         self.sw_manager.upgrade()
         return ['scylla']
 
