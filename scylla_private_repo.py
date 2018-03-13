@@ -73,7 +73,8 @@ class PrivateRepo(object):
 class RHELPrivateRepo(PrivateRepo):
     def __init__(self, sw_repo, pkginfo_url, redirect_url):
         super(RHELPrivateRepo, self).__init__(sw_repo, pkginfo_url, redirect_url)
-        self.body_prefix = ['[scylla', 'name=', 'baseurl=', 'enabled=', 'gpgcheck=']
+        self.body_prefix = ['[scylla', 'name=', 'baseurl=', 'enabled=', 'gpgcheck=', 'type=',
+                            'skip_if_unavailable=', 'gpgkey=', 'repo_gpgcheck=', 'enabled_metadata=']
 
 
 class DebianPrivateRepo(PrivateRepo):
