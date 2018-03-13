@@ -323,7 +323,17 @@ class ScyllaInstallGeneric(object):
             script_content = f.read()
         if '--no-cpuscaling-setup' in script_content:
             setup_cmd += ' --no-cpuscaling-setup'
+        # check setup
+        if self.uuid:
+            version = self.version.replace('scylladb-', '')
+            # fixme: current repoid and ruid aren't filled correctly by housekeeping backend
+            # last_id = self.cvdb.get_last_id_v2("select * from housekeeping.checkversion where repoid='{}' and ruid='{}' and version like '{}%' and statuscode='i'".format(self.repoid, self.uuid, version))
+            last_id = self.cvdb.get_last_id_v2("select * from housekeeping.checkversion where version like '{}%' and statuscode='i'".format(version))
         process.run(setup_cmd, shell=True)
+        # check setup
+        if self.uuid:
+            # fixme: strict check with repoid, ruid
+            assert self.cvdb.check_new_record_v2("select * from housekeeping.checkversion where version like '{}%' and statuscode='i'".format(version), last_id, 'dt')
 
         self.srv_manager.start_services()
         self.srv_manager.wait_services_up()
