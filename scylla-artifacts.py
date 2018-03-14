@@ -5,6 +5,7 @@ import re
 import logging
 import threading
 from pkg_resources import parse_version
+from scylla_private_repo import CheckVersionDB
 
 from avocado import Test
 from avocado import main
@@ -281,6 +282,16 @@ class ScyllaInstallGeneric(object):
             process.run(cmd % uuid, shell=True, verbose=True)
             process.run('sudo -u scylla touch %s' % mark_path, verbose=True)
 
+    def download_scylla_repo(self):
+        priv_repo_flag = re.findall("https://repositories.scylladb.com/scylla/repo/(.*scylladb-[\d\.]+).*\.\w+", self.sw_repo_src)
+        if priv_repo_flag:
+            uuid, repoid, version = priv_repo_flag[0].split('/')
+            last_id = self.cvdb.get_last_id(uuid, repoid, version)
+        process.run('sudo curl %s -o %s -L' % (self.sw_repo_src, self.sw_repo_dst),
+                    shell=True)
+        if priv_repo_flag:
+            assert self.cvdb.check_new_record(uuid, repoid, version, last_id)
+
     def run(self):
         wait.wait_for(self.sw_manager.upgrade, timeout=300, step=30,
                       text="Wait until system is up to date...")
@@ -394,8 +405,7 @@ class ScyllaInstallUbuntu1404(ScyllaInstallDebian):
         process.run('sudo add-apt-repository -y ppa:scylladb/ppa', shell=True)
 
     def env_setup(self):
-        process.run('sudo curl %s -o %s -L' % (self.sw_repo_src, self.sw_repo_dst),
-                    shell=True)
+        self.download_scylla_repo()
         self.prepare_extend_repo()
         process.run('sudo apt-get update')
         self.install_java18()
@@ -411,8 +421,7 @@ class ScyllaInstallUbuntu1604(ScyllaInstallDebian):
         process.run("sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 17723034C56D4B19")
 
     def env_setup(self):
-        process.run('sudo curl %s -o %s -L' % (self.sw_repo_src, self.sw_repo_dst),
-                    shell=True)
+        self.download_scylla_repo()
         self.prepare_extend_repo()
         process.run('sudo apt-get update')
         self.sw_manager.upgrade()
@@ -428,8 +437,7 @@ class ScyllaInstallDebian8(ScyllaInstallDebian):
         process.run("echo 'deb http://download.opensuse.org/repositories/home:/scylladb:/scylla-3rdparty-jessie/Debian_8.0/ /' > /etc/apt/sources.list.d/scylla-3rdparty.list", shell=True)
 
     def env_setup(self):
-        process.run('sudo curl %s -o %s -L' % (self.sw_repo_src, self.sw_repo_dst),
-                    shell=True)
+        self.download_scylla_repo()
         self.prepare_extend_repo()
         process.run('sudo apt-get update')
         self.install_java18(args=' -t jessie-backports')
@@ -442,8 +450,7 @@ class ScyllaInstallDebian9(ScyllaInstallDebian):
         pass
 
     def env_setup(self):
-        process.run('sudo curl %s -o %s -L' % (self.sw_repo_src, self.sw_repo_dst),
-                    shell=True)
+        self.download_scylla_repo()
         self.prepare_extend_repo()
         process.run('sudo apt-get update')
         self.sw_manager.upgrade()
@@ -460,8 +467,7 @@ class ScyllaInstallFedora(ScyllaInstallGeneric):
 class ScyllaInstallFedora22(ScyllaInstallFedora):
 
     def env_setup(self):
-        process.run('sudo curl %s -o %s -L' % (self.sw_repo_src, self.sw_repo_dst),
-                    shell=True)
+        self.download_scylla_repo()
         self.sw_manager.upgrade()
         return ['scylla']
 
@@ -491,8 +497,7 @@ class ScyllaInstallCentOS7(ScyllaInstallCentOS):
 
     def env_setup(self):
         self._centos_remove_system_packages()
-        process.run('sudo curl %s -o %s -L' % (self.sw_repo_src, self.sw_repo_dst),
-                    shell=True)
+        self.download_scylla_repo()
         self.sw_manager.upgrade()
         return [self.scylla_pkg()]
 
@@ -655,10 +660,14 @@ class ScyllaArtifactSanity(Test):
         else:
             self.skip('Unsupported OS: %s' % detected_distro)
 
+        installer.cvdb = self.cvdb
         installer.run()
         os.mknod(self.get_setup_file_done())
 
     def setUp(self):
+        self.cvdb = CheckVersionDB(self.params.get('host'),
+                                   self.params.get('user'),
+                                   self.params.get('passwd'))
         if not os.path.isfile(self.get_setup_file_done()):
             self.scylla_setup()
 

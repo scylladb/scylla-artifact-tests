@@ -55,6 +55,20 @@ class CheckVersionDB(object):
         self.log.debug('RET: {}'.format(ret))
         return ret
 
+    def get_last_id(self, uuid, repoid, version, table='housekeeping.repo'):
+        # get last id of test uuid
+        last_id = 0
+        ret = self.execute('select * from {} where uuid="{}" and repoid="{}" and version="{}" order by -dt limit 1'.format(table, uuid, repoid, version))
+        if len(ret) > 0:
+            last_id = ret[0][0]
+        return last_id
+
+    def check_new_record(self, uuid, repoid, version, last_id, table='housekeeping.repo'):
+        # verify download repo of test uuid is collected to repo table
+        self.commit()
+        ret = self.execute('select * from {} where uuid="{}" and repoid="{}" and version="{}" and id > {}'.format(table, uuid, repoid, version, last_id))
+        return len(ret) > 0
+
 
 class PrivateRepo(object):
     def __init__(self, sw_repo, pkginfo_url, redirect_url):
