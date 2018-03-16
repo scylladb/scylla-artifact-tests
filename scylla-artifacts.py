@@ -281,14 +281,12 @@ class ScyllaInstallGeneric(object):
             process.run('sudo -u scylla touch %s' % mark_path, verbose=True)
 
     def download_scylla_repo(self):
-        priv_repo_flag = re.findall("https://repositories.scylladb.com/scylla/repo/(.*scylladb-[\d\.]+).*\.\w+", self.sw_repo_src)
-        if priv_repo_flag:
-            uuid, repoid, version = priv_repo_flag[0].split('/')
-            last_id = self.cvdb.get_last_id(uuid, repoid, version)
+        if self.uuid:
+            last_id = self.cvdb.get_last_id(self.uuid, self.repoid, self.version)
         process.run('sudo curl %s -o %s -L' % (self.sw_repo_src, self.sw_repo_dst),
                     shell=True)
-        if priv_repo_flag:
-            assert self.cvdb.check_new_record(uuid, repoid, version, last_id)
+        if self.uuid:
+            assert self.cvdb.check_new_record(self.uuid, self.repoid, self.version, last_id)
 
     def run(self):
         wait.wait_for(self.sw_manager.upgrade, timeout=300, step=30,
