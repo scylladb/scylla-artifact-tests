@@ -51,18 +51,31 @@ class CheckVersionDB(object):
         self.log.debug('RET: {}'.format(ret))
         return ret
 
-    def get_last_id(self, uuid, repoid, version, table='housekeeping.repo'):
+    def get_last_id(self, uuid, repoid, version=None, table='housekeeping.repo', add_filter=None):
         # get last id of test uuid
         last_id = 0
-        ret = self.execute('select * from {} where uuid="{}" and repoid="{}" and version="{}" order by -dt limit 1'.format(table, uuid, repoid, version))
+        sql = 'select * from {} where uuid="{}" and repoid="{}"'.format(table, uuid, repoid)
+        if version:
+            sql += ' and version="{}" '.format(version)
+        if add_filter:
+            sql += ' {}'.format(add_filter)
+        sql += ' order by -dt limit 1'
+
+        ret = self.execute(sql)
         if len(ret) > 0:
             last_id = ret[0][0]
         return last_id
 
-    def check_new_record(self, uuid, repoid, version, last_id, table='housekeeping.repo'):
+    def check_new_record(self, uuid, repoid, version=None, last_id=0, table='housekeeping.repo', add_filter=None):
         # verify download repo of test uuid is collected to repo table
         self.commit()
-        ret = self.execute('select * from {} where uuid="{}" and repoid="{}" and version="{}" and id > {}'.format(table, uuid, repoid, version, last_id))
+        sql = 'select * from {} where uuid="{}" and repoid="{}"'.format(table, uuid, repoid)
+        if version:
+            sql += ' and version="{}" '.format(version)
+        if add_filter:
+            sql += ' {}'.format(add_filter)
+        sql += ' and id > {}'.format(last_id)
+        ret = self.execute(sql)
         return len(ret) > 0
 
 
