@@ -17,7 +17,6 @@ import logging
 import tempfile
 import json
 import re
-import MySQLdb
 
 from avocado import Test
 from avocado.utils import process
@@ -34,6 +33,7 @@ class CheckVersionDB(object):
         self.log = logging.getLogger('scylla_private_repo')
 
     def connect(self):
+        import MySQLdb
         self.db = MySQLdb.connect(host=self.host,
                                   user=self.user,
                                   passwd=self.passwd,
