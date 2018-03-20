@@ -78,6 +78,22 @@ class CheckVersionDB(object):
         ret = self.execute(sql)
         return len(ret) > 0
 
+    def get_last_id_v2(self, sql):
+        # get last id of test uuid
+        last_id = 0
+        sql += ' order by -dt limit 1'
+        ret = self.execute(sql)
+        if len(ret) > 0:
+            last_id = ret[0][0]
+        return last_id
+
+    def check_new_record_v2(self, sql, last_id=0, key='id'):
+        # verify download repo of test uuid is collected to repo table
+        self.commit()
+        sql += " and {} > '{}'".format(key, last_id)
+        ret = self.execute(sql)
+        return len(ret) > 0
+
 
 class EmptyTest(Test):
     """
