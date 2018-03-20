@@ -5,7 +5,11 @@ import re
 import logging
 import threading
 from pkg_resources import parse_version
-from scylla_private_repo import CheckVersionDB
+try:
+    from check_version import CheckVersionDB
+except:
+    # Avocado may not copy check_version.py to VM
+    print "failed to import CheckVersionDB"
 
 from avocado import Test
 from avocado import main
