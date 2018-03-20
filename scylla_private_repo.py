@@ -22,54 +22,7 @@ from avocado import Test
 from avocado.utils import process
 from avocado import main
 
-
-class CheckVersionDB(object):
-    def __init__(self, host, user, passwd):
-        self.host = host
-        self.user = user
-        self.passwd = passwd
-        self.db_name = 'housekeeping'
-        self.connect()
-        self.log = logging.getLogger('scylla_private_repo')
-
-    def connect(self):
-        import MySQLdb
-        self.db = MySQLdb.connect(host=self.host,
-                                  user=self.user,
-                                  passwd=self.passwd,
-                                  db=self.db_name)
-        self.cursor = self.db.cursor()
-
-    def close(self):
-        self.db.close()
-
-    def reconnect(self):
-        self.close()
-        self.connect()
-
-    def commit(self):
-        self.db.commit()
-
-    def execute(self, sql, verbose=True):
-        self.log.debug('SQL: {}'.format(sql))
-        self.cursor.execute(sql)
-        ret = self.cursor.fetchall()
-        self.log.debug('RET: {}'.format(ret))
-        return ret
-
-    def get_last_id(self, uuid, repoid, version, table='housekeeping.repo'):
-        # get last id of test uuid
-        last_id = 0
-        ret = self.execute('select * from {} where uuid="{}" and repoid="{}" and version="{}" order by -dt limit 1'.format(table, uuid, repoid, version))
-        if len(ret) > 0:
-            last_id = ret[0][0]
-        return last_id
-
-    def check_new_record(self, uuid, repoid, version, last_id, table='housekeeping.repo'):
-        # verify download repo of test uuid is collected to repo table
-        self.commit()
-        ret = self.execute('select * from {} where uuid="{}" and repoid="{}" and version="{}" and id > {}'.format(table, uuid, repoid, version, last_id))
-        return len(ret) > 0
+from check_version import CheckVersionDB
 
 
 class PrivateRepo(object):
