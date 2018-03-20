@@ -566,6 +566,7 @@ class ScyllaArtifactSanity(Test):
     """
     setup_done_file = None
     srv_manager = ScyllaServiceManager()
+    cvdb = None
 
     def get_setup_file_done(self):
         tmpdir = os.path.dirname(self.workdir)
@@ -620,9 +621,10 @@ class ScyllaArtifactSanity(Test):
         os.mknod(self.get_setup_file_done())
 
     def setUp(self):
-        self.cvdb = CheckVersionDB(self.params.get('host'),
-                                   self.params.get('user'),
-                                   self.params.get('passwd'))
+        if self.params.get('host') and self.params.get('user') and self.params.get('passwd'):
+            self.cvdb = CheckVersionDB(self.params.get('host'),
+                                       self.params.get('user'),
+                                       self.params.get('passwd'))
         if not os.path.isfile(self.get_setup_file_done()):
             self.scylla_setup()
 
