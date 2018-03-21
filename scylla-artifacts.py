@@ -341,7 +341,7 @@ class ScyllaInstallGeneric(object):
         # check setup
         if self.uuid:
             # fixme: strict check with repoid, ruid
-            assert self.cvdb.check_new_record_v2("select * from housekeeping.checkversion where version like '{}%' and statuscode='i'".format(version), last_id, 'dt')
+            assert self.cvdb.check_new_record_v2("select * from housekeeping.checkversion where version like '{}%' and statuscode='i'".format(version), last_id)
 
         self.srv_manager.start_services()
         self.srv_manager.wait_services_up()
@@ -638,9 +638,6 @@ class ScyllaArtifactSanity(Test):
         self._log_collection_thread = threading.Thread(target=get_scylla_logs)
         self._log_collection_thread.start()
         sw_repo = self.params.get('sw_repo', default=None)
-        priv_repo_flag = re.findall("https://repositories.scylladb.com/scylla/repo/(.*scylladb-[\d\.]+).*\.\w+", sw_repo)
-        if priv_repo_flag:
-            self.uuid, self.repoid, self.version = priv_repo_flag[0].split('/')
         ami = self.params.get('ami', default=False) is True
         TEST_PARAMS = self.params
 
@@ -699,6 +696,11 @@ class ScyllaArtifactSanity(Test):
             self.cvdb = CheckVersionDB(self.params.get('host'),
                                        self.params.get('user'),
                                        self.params.get('passwd'))
+        sw_repo = self.params.get('sw_repo', default='')
+        priv_repo_flag = re.findall("https://repositories.scylladb.com/scylla/repo/(.*scylladb-[\d\.]+).*\.\w+", sw_repo)
+        if priv_repo_flag:
+            self.uuid, self.repoid, self.version = priv_repo_flag[0].split('/')
+            assert self.cvdb, 'check version db must be connected for private repo'
         if not os.path.isfile(self.get_setup_file_done()):
             self.scylla_setup()
 
@@ -748,7 +750,7 @@ class ScyllaArtifactSanity(Test):
         self.srv_manager.wait_services_up()
         # check restart
         if self.uuid:
-            assert self.cvdb.check_new_record_v2("select * from housekeeping.checkversion where ruid='{}' and repoid='{}' and version like '{}%' and statuscode='r'".format(self.uuid, self.repoid, version), last_id, 'dt')
+            assert self.cvdb.check_new_record_v2("select * from housekeeping.checkversion where ruid='{}' and repoid='{}' and version like '{}%' and statuscode='r'".format(self.uuid, self.repoid, version), last_id)
         self.run_nodetool()
         self.run_cassandra_stress()
 
