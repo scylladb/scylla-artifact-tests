@@ -335,7 +335,7 @@ class ScyllaInstallGeneric(object):
         # check setup
         if self.uuid:
             # fixme: strict check with repoid, ruid
-            assert self.cvdb.check_new_record_v2("select * from housekeeping.checkversion where version like '{}%' and statuscode='i'".format(version), last_id, 'dt')
+            assert self.cvdb.check_new_record_v2("select * from housekeeping.checkversion where version like '{}%' and statuscode='i'".format(version), last_id)
 
         self.srv_manager.start_services()
         self.srv_manager.wait_services_up()
@@ -704,7 +704,7 @@ class ScyllaArtifactSanity(Test):
         self.srv_manager.wait_services_up()
         # check restart
         if self.uuid:
-            assert self.cvdb.check_new_record_v2("select * from housekeeping.checkversion where ruid='{}' and repoid='{}' and version like '{}%' and statuscode='r'".format(self.uuid, self.repoid, version), last_id, 'dt')
+            assert self.cvdb.check_new_record_v2("select * from housekeeping.checkversion where ruid='{}' and repoid='{}' and version like '{}%' and statuscode='r'".format(self.uuid, self.repoid, version), last_id)
         self.run_nodetool()
         self.run_cassandra_stress()
 
