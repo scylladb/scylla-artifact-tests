@@ -5,6 +5,11 @@ import re
 import logging
 import threading
 from pkg_resources import parse_version
+try:
+    from check_version import CheckVersionDB
+except:
+    # Avocado may not copy check_version.py to VM
+    print "failed to import CheckVersionDB"
 
 from avocado import Test
 from avocado import main
@@ -282,19 +287,30 @@ class ScyllaInstallGeneric(object):
             process.run('sudo -u scylla touch %s' % mark_path, verbose=True)
 
     def download_scylla_repo(self):
+        if self.uuid:
+            last_id = self.cvdb.get_last_id(self.uuid, self.repoid, self.version)
         process.run('sudo curl %s -o %s -L' % (self.sw_repo_src, self.sw_repo_dst),
                     shell=True)
+        if self.uuid:
+            assert self.cvdb.check_new_record(self.uuid, self.repoid, self.version, last_id)
 
     def run(self):
         wait.wait_for(self.sw_manager.upgrade, timeout=300, step=30,
                       text="Wait until system is up to date...")
         # setup software repo and other environment before install test packages
         pkgs = self.env_setup()
+        # check install
+        if self.uuid:
+            version = self.version.replace('scylladb-', '')
+            last_id = self.cvdb.get_last_id(self.uuid, self.repoid, self.version, table='housekeeping.repodownload', add_filter="and file_name like 'scylla-server%{}%'".format(version))
         for pkg in pkgs:
             if not self.sw_manager.install(pkg):
                 e_msg = ('Package %s could not be installed '
                          '(see logs for details)' % os.path.basename(pkg))
                 raise InstallPackageError(e_msg)
+        # check install
+        if self.uuid:
+            assert self.cvdb.check_new_record(self.uuid, self.repoid, self.version, last_id, table='housekeeping.repodownload', add_filter="and file_name like 'scylla-server%{}%'".format(version))
 
         # enable raid setup when second disk exists
         setup_cmd = 'sudo /usr/lib/scylla/scylla_setup --nic eth0'
@@ -315,7 +331,17 @@ class ScyllaInstallGeneric(object):
             script_content = f.read()
         if '--no-cpuscaling-setup' in script_content:
             setup_cmd += ' --no-cpuscaling-setup'
+        # check setup
+        if self.uuid:
+            version = self.version.replace('scylladb-', '')
+            # fixme: current repoid and ruid aren't filled correctly by housekeeping backend
+            # last_id = self.cvdb.get_last_id_v2("select * from housekeeping.checkversion where repoid='{}' and ruid='{}' and version like '{}%' and statuscode='i'".format(self.repoid, self.uuid, version))
+            last_id = self.cvdb.get_last_id_v2("select * from housekeeping.checkversion where version like '{}%' and statuscode='i'".format(version))
         process.run(setup_cmd, shell=True)
+        # check setup
+        if self.uuid:
+            # fixme: strict check with repoid, ruid
+            assert self.cvdb.check_new_record_v2("select * from housekeeping.checkversion where version like '{}%' and statuscode='i'".format(version), last_id, 'dt')
 
         self.srv_manager.start_services()
         self.srv_manager.wait_services_up()
@@ -597,6 +623,10 @@ class ScyllaArtifactSanity(Test):
     """
     setup_done_file = None
     srv_manager = ScyllaServiceManager()
+    cvdb = None
+    uuid = None
+    repoid = None
+    version = None
 
     def get_setup_file_done(self):
         tmpdir = os.path.dirname(self.workdir)
@@ -608,6 +638,9 @@ class ScyllaArtifactSanity(Test):
         self._log_collection_thread = threading.Thread(target=get_scylla_logs)
         self._log_collection_thread.start()
         sw_repo = self.params.get('sw_repo', default=None)
+        priv_repo_flag = re.findall("https://repositories.scylladb.com/scylla/repo/(.*scylladb-[\d\.]+).*\.\w+", sw_repo)
+        if priv_repo_flag:
+            self.uuid, self.repoid, self.version = priv_repo_flag[0].split('/')
         ami = self.params.get('ami', default=False) is True
         TEST_PARAMS = self.params
 
@@ -653,10 +686,19 @@ class ScyllaArtifactSanity(Test):
         else:
             self.skip('Unsupported OS: %s' % detected_distro)
 
+        installer.cvdb = self.cvdb
+        installer.uuid = self.uuid
+        installer.repoid = self.repoid
+        installer.version = self.version
+
         installer.run()
         os.mknod(self.get_setup_file_done())
 
     def setUp(self):
+        if self.params.get('host') and self.params.get('user') and self.params.get('passwd'):
+            self.cvdb = CheckVersionDB(self.params.get('host'),
+                                       self.params.get('user'),
+                                       self.params.get('passwd'))
         if not os.path.isfile(self.get_setup_file_done()):
             self.scylla_setup()
 
@@ -698,8 +740,15 @@ class ScyllaArtifactSanity(Test):
         self.run_cassandra_stress()
 
     def test_after_restart(self):
+        # check restart
+        if self.uuid:
+            version = self.version.replace('scylladb-', '')
+            last_id = self.cvdb.get_last_id_v2("select * from housekeeping.checkversion where ruid='{}' and repoid='{}' and version like '{}%' and statuscode='r'".format(self.uuid, self.repoid, version))
         self.srv_manager.restart_services()
         self.srv_manager.wait_services_up()
+        # check restart
+        if self.uuid:
+            assert self.cvdb.check_new_record_v2("select * from housekeeping.checkversion where ruid='{}' and repoid='{}' and version like '{}%' and statuscode='r'".format(self.uuid, self.repoid, version), last_id, 'dt')
         self.run_nodetool()
         self.run_cassandra_stress()
 
