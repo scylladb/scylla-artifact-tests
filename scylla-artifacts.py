@@ -700,12 +700,15 @@ class ScyllaArtifactSanity(Test):
         # check restart
         if self.uuid:
             version = self.version.replace('scylladb-', '')
-            last_id = self.cvdb.get_last_id_v2("select * from housekeeping.checkversion where ruid='{}' and repoid='{}' and version like '{}%' and statuscode='r'".format(self.uuid, self.repoid, version))
+            # fixme: current repoid and ruid aren't filled correctly by housekeeping backend (except centos)
+            # last_id = self.cvdb.get_last_id_v2("select * from housekeeping.checkversion where ruid='{}' and repoid='{}' and version like '{}%' and statuscode='r'".format(self.uuid, self.repoid, version))
+            last_id = self.cvdb.get_last_id_v2("select * from housekeeping.checkversion where version like '{}%' and statuscode='r'".format(version))
         self.srv_manager.restart_services()
         self.srv_manager.wait_services_up()
         # check restart
         if self.uuid:
-            assert self.cvdb.check_new_record_v2("select * from housekeeping.checkversion where ruid='{}' and repoid='{}' and version like '{}%' and statuscode='r'".format(self.uuid, self.repoid, version), last_id)
+            #assert self.cvdb.check_new_record_v2("select * from housekeeping.checkversion where ruid='{}' and repoid='{}' and version like '{}%' and statuscode='r'".format(self.uuid, self.repoid, version), last_id)
+            assert self.cvdb.check_new_record_v2("select * from housekeeping.checkversion where version like '{}%' and statuscode='r'".format(version), last_id)
         self.run_nodetool()
         self.run_cassandra_stress()
 
