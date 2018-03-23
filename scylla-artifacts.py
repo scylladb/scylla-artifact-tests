@@ -696,8 +696,8 @@ class ScyllaArtifactSanity(Test):
             self.cvdb = CheckVersionDB(self.params.get('host'),
                                        self.params.get('user'),
                                        self.params.get('passwd'))
-        sw_repo = self.params.get('sw_repo', default='')
-        priv_repo_flag = re.findall("https://repositories.scylladb.com/scylla/repo/(.*scylladb-[\d\.]+).*\.\w+", sw_repo)
+        self.sw_repo = self.params.get('sw_repo', default='')
+        priv_repo_flag = re.findall("https://repositories.scylladb.com/scylla/repo/(.*scylladb-[\d\.]+).*\.\w+", self.sw_repo)
         if priv_repo_flag:
             self.uuid, self.repoid, self.version = priv_repo_flag[0].split('/')
             assert self.cvdb, 'check version db must be connected for private repo'
@@ -751,7 +751,7 @@ class ScyllaArtifactSanity(Test):
         self.srv_manager.restart_services()
         self.srv_manager.wait_services_up()
         # check restart
-        if self.uuid:
+        if self.uuid and 'trusty.list' not in self.sw_repo:
             #assert self.cvdb.check_new_record_v2("select * from housekeeping.checkversion where ruid='{}' and repoid='{}' and version like '{}%' and statuscode='r'".format(self.uuid, self.repoid, version), last_id)
             assert self.cvdb.check_new_record_v2("select * from housekeeping.checkversion where version like '{}%' and statuscode='r'".format(version), last_id)
         self.run_nodetool()
