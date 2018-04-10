@@ -190,6 +190,9 @@ def get_scylla_logs():
         process.run('sudo %s -f '
                     '-u scylla-io-setup.service '
                     '-u scylla-server.service '
+                    '-u scylla-ami-setup.service '
+                    '-u scylla-housekeeping-daily.service '
+                    '-u scylla-housekeeping-restart.service '
                     '-u scylla-jmx.service' % journalctl_cmd,
                     verbose=True, ignore_status=True)
     except path.CmdNotFoundError:
