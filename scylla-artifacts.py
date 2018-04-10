@@ -468,7 +468,10 @@ class ScyllaInstallDebian8(ScyllaInstallDebian):
 
 class ScyllaInstallDebian9(ScyllaInstallDebian):
     def prepare_extend_repo(self):
-        pass
+        process.run("apt-get install gnupg1-curl dirmngr -y")
+        process.run("apt-key adv --fetch-keys https://download.opensuse.org/repositories/home:/scylladb:/scylla-3rdparty-stretch/Debian_9.0/Release.key")
+        process.run("sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 17723034C56D4B19")
+        process.run("echo 'deb http://download.opensuse.org/repositories/home:/scylladb:/scylla-3rdparty-stretch/Debian_9.0/ /' > /etc/apt/sources.list.d/scylla-3rdparty.list")
 
     def env_setup(self):
         self.download_scylla_repo()
