@@ -303,7 +303,7 @@ class ScyllaInstallGeneric(object):
         # check install
         if self.uuid:
             version = self.version.replace('scylladb-', '')
-            last_id = self.cvdb.get_last_id(self.uuid, self.repoid, self.version, table='housekeeping.repodownload', add_filter="and file_name like 'scylla-server%{}%'".format(version))
+            last_id = self.cvdb.get_last_id(self.uuid, self.repoid, self.version, table='housekeeping.repodownload', add_filter="and file_name like 'scylla%server%{}%'".format(version))
         for pkg in pkgs:
             if not self.sw_manager.install(pkg):
                 e_msg = ('Package %s could not be installed '
@@ -311,7 +311,7 @@ class ScyllaInstallGeneric(object):
                 raise InstallPackageError(e_msg)
         # check install
         if self.uuid:
-            assert self.cvdb.check_new_record(self.uuid, self.repoid, self.version, last_id, table='housekeeping.repodownload', add_filter="and file_name like 'scylla-server%{}%'".format(version))
+            assert self.cvdb.check_new_record(self.uuid, self.repoid, self.version, last_id, table='housekeeping.repodownload', add_filter="and file_name like 'scylla%server%{}%'".format(version))
 
         # enable raid setup when second disk exists
         setup_cmd = 'sudo /usr/lib/scylla/scylla_setup --nic eth0'
