@@ -440,9 +440,24 @@ class ScyllaInstallUbuntu1404(ScyllaInstallDebian):
 class ScyllaInstallUbuntu1604(ScyllaInstallDebian):
     def prepare_extend_repo(self):
         process.run('sudo apt-get install software-properties-common -y', shell=True)
-        process.run('sudo add-apt-repository -y ppa:scylladb/ppa', shell=True)
         process.run("sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 6B2BFD3660EF3F5B")
         process.run("sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 17723034C56D4B19")
+        process.run('sudo add-apt-repository -y ppa:scylladb/ppa', shell=True)
+
+    def env_setup(self):
+        self.download_scylla_repo()
+        self.prepare_extend_repo()
+        process.run('sudo apt-get update')
+        self.sw_manager.upgrade()
+        return [self.scylla_pkg()]
+
+
+class ScyllaInstallUbuntu1804(ScyllaInstallDebian):
+    def prepare_extend_repo(self):
+        process.run('sudo apt-get install software-properties-common -y', shell=True)
+        process.run("sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 6B2BFD3660EF3F5B")
+        process.run("sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 17723034C56D4B19")
+        process.run('sudo add-apt-repository -y ppa:scylladb/ppa', shell=True)
 
     def env_setup(self):
         self.download_scylla_repo()
@@ -658,6 +673,9 @@ class ScyllaArtifactSanity(Test):
         ubuntu_16_04 = (detected_distro.name.lower() == 'ubuntu' and
                         detected_distro.version == '16' and
                         detected_distro.release == '04')
+        ubuntu_18_04 = (detected_distro.name.lower() == 'ubuntu' and
+                        detected_distro.version == '18' and
+                        detected_distro.release == '04')
         debian_8 = (detected_distro.name.lower() == 'debian' and
                     detected_distro.version == '8')
         debian_9 = (detected_distro.name.lower() == 'debian' and
@@ -675,6 +693,9 @@ class ScyllaArtifactSanity(Test):
 
         elif ubuntu_16_04:
             installer = ScyllaInstallUbuntu1604(sw_repo=sw_repo)
+
+        elif ubuntu_18_04:
+            installer = ScyllaInstallUbuntu1804(sw_repo=sw_repo)
 
         elif debian_8:
             installer = ScyllaInstallDebian8(sw_repo=sw_repo)
