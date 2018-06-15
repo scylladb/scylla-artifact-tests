@@ -355,6 +355,7 @@ class ScyllaInstallGeneric(object):
         # verify SELinux setup on Red Hat variants
         detected_distro = distro.detect()
         distro_name = detected_distro.name.lower()
+        distro_version = detected_distro.version
         is_debian_variant = 'ubuntu' in distro_name or 'debian' in distro_name
         if not is_debian_variant:
             result = process.run('getenforce')
@@ -376,6 +377,9 @@ class ScyllaInstallGeneric(object):
             if devlist:
                 coredump_err = "Coredump directory isn't pointed to raid disk"
                 assert os.path.realpath('/var/lib/systemd/coredump') == '/var/lib/scylla/coredump', coredump_err
+        elif distro_name == 'debian' and distro_version == '9':
+            result = process.run('sysctl kernel.core_pattern')
+            assert 'systemd-coredump' in result.stdout
         else:
             result = process.run('sysctl kernel.core_pattern')
             assert 'scylla_save_coredump' in result.stdout
