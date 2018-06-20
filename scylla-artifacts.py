@@ -386,12 +386,9 @@ class ScyllaInstallGeneric(object):
         # verify io and sysconfig setup
         if self.is_systemd():
             process.run('systemctl status scylla-server')
-            process.run('systemctl status collectd')
             #process.run('systemctl status scylla-housekeeping-restart.timer')
         else:
             result = process.run('service scylla-server status')
-            assert 'running' in result.stdout
-            result = process.run('service collectd status')
             assert 'running' in result.stdout
 
 
