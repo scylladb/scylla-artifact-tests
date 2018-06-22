@@ -187,7 +187,7 @@ class InstallPackageError(Exception):
 def get_scylla_logs():
     try:
         journalctl_cmd = path.find_command('journalctl')
-        process.run('sudo %s -f '
+        process.run('sudo %s -f --no-tail '
                     '-u scylla-io-setup.service '
                     '-u scylla-server.service '
                     '-u scylla-ami-setup.service '
