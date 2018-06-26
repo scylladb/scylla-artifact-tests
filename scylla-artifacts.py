@@ -318,7 +318,7 @@ class ScyllaInstallGeneric(object):
             assert self.cvdb.check_new_record(self.uuid, self.repoid, self.version, last_id, table='housekeeping.repodownload', add_filter="and file_name like 'scylla%server%{}%'".format(version))
 
         # enable raid setup when second disk exists
-        setup_cmd = 'sudo /usr/lib/scylla/scylla_setup --nic eth0'
+        setup_cmd = '/usr/lib/scylla/scylla_setup --nic eth0'
         result = process.run('ls /dev/[hvs]db', shell=True, ignore_status=True)
         devlist = result.stdout.split()
 
