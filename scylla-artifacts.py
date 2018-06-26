@@ -318,7 +318,7 @@ class ScyllaInstallGeneric(object):
             assert self.cvdb.check_new_record(self.uuid, self.repoid, self.version, last_id, table='housekeeping.repodownload', add_filter="and file_name like 'scylla%server%{}%'".format(version))
 
         # enable raid setup when second disk exists
-        setup_cmd = 'sudo /usr/lib/scylla/scylla_setup --nic eth0'
+        setup_cmd = '/usr/lib/scylla/scylla_setup --nic eth0'
         result = process.run('ls /dev/[hvs]db', shell=True, ignore_status=True)
         devlist = result.stdout.split()
 
@@ -342,7 +342,7 @@ class ScyllaInstallGeneric(object):
             # fixme: current repoid and ruid aren't filled correctly by housekeeping backend
             # last_id = self.cvdb.get_last_id_v2("select * from housekeeping.checkversion where repoid='{}' and ruid='{}' and version like '{}%' and statuscode='i'".format(self.repoid, self.uuid, version))
             last_id = self.cvdb.get_last_id_v2("select * from housekeeping.checkversion where version like '{}%' and statuscode='i'".format(version))
-        process.run(setup_cmd, shell=True)
+        process.run(setup_cmd, shell=True, verbose=True, timeout=300)
         # check setup
         if self.uuid:
             # fixme: strict check with repoid, ruid
