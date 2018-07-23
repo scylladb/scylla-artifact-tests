@@ -532,17 +532,17 @@ class ScyllaInstallAMI(ScyllaInstallGeneric):
         request_ver = '2017.666' if self.is_enterprise else '2.0'
 
         conf_dict = {
-            'i3.large': ['SEASTAR_IO="--num-io-queues 2 --max-io-requests 192"', 'CPUSET="--cpuset 0-1 "'],
-            'i3.xlarge': ['SEASTAR_IO="--num-io-queues 4 --max-io-requests 192"', 'CPUSET="--cpuset 0-3 "'],
-            'i3.2xlarge': ['SEASTAR_IO="--num-io-queues 8 --max-io-requests 192"', 'CPUSET="--cpuset 0-7 "'],
-            'i3.4xlarge': ['SEASTAR_IO="--num-io-queues 14 --max-io-requests 384"', 'CPUSET="--cpuset 1-7,9-15 "'],
-            'i3.8xlarge': ['SEASTAR_IO="--num-io-queues 30 --max-io-requests 768"', 'CPUSET="--cpuset 1-15,17-31 "'],
-            'i3.16xlarge': ['SEASTAR_IO="--num-io-queues 62 --max-io-requests 1536"', 'CPUSET="--cpuset 1-31,33-63 "'],
-            'c3.large': ['SEASTAR_IO="--num-io-queues 2 --max-io-requests 32"', 'CPUSET="--cpuset 0-1 "'],
-            'c3.8xlarge': ['SEASTAR_IO="--num-io-queues 8 --max-io-requests 32"', 'CPUSET="--cpuset 1-15,17-31 "'],
-            'm3.2xlarge': ['SEASTAR_IO="--num-io-queues 8 --max-io-requests 32"', 'CPUSET="--cpuset 0-7 "'],
-            'm3.medium': ['SEASTAR_IO="--num-io-queues 1 --max-io-requests 32"', 'CPUSET="--cpuset 0 "'],
-            'i2.4xlarge': ['SEASTAR_IO="--num-io-queues 14 --max-io-requests 128"', 'CPUSET="--cpuset 1-7,9-15 "']
+            'i3.large': ['SEASTAR_IO="--io-properties-file=/etc/scylla.d/io_properties.yaml"', 'CPUSET="--cpuset 0-1 "'],
+            'i3.xlarge': ['SEASTAR_IO="--io-properties-file=/etc/scylla.d/io_properties.yaml"', 'CPUSET="--cpuset 0-3 "'],
+            'i3.2xlarge': ['SEASTAR_IO="--io-properties-file=/etc/scylla.d/io_properties.yaml"', 'CPUSET="--cpuset 0-7 "'],
+            'i3.4xlarge': ['SEASTAR_IO="--io-properties-file=/etc/scylla.d/io_properties.yaml"', 'CPUSET="--cpuset 1-7,9-15 "'],
+            'i3.8xlarge': ['SEASTAR_IO="--io-properties-file=/etc/scylla.d/io_properties.yaml"', 'CPUSET="--cpuset 1-15,17-31 "'],
+            'i3.16xlarge': ['SEASTAR_IO="--io-properties-file=/etc/scylla.d/io_properties.yaml"', 'CPUSET="--cpuset 1-31,33-63 "'],
+            'c3.large': ['SEASTAR_IO="--io-properties-file=/etc/scylla.d/io_properties.yaml"', 'CPUSET="--cpuset 0-1 "'],
+            'c3.8xlarge': ['SEASTAR_IO="--io-properties-file=/etc/scylla.d/io_properties.yaml"', 'CPUSET="--cpuset 1-15,17-31 "'],
+            'm3.2xlarge': ['SEASTAR_IO="--io-properties-file=/etc/scylla.d/io_properties.yaml"', 'CPUSET="--cpuset 0-7 "'],
+            'm3.medium': ['SEASTAR_IO="--io-properties-file=/etc/scylla.d/io_properties.yaml"', 'CPUSET="--cpuset 0 "'],
+            'i2.4xlarge': ['SEASTAR_IO="--io-properties-file=/etc/scylla.d/io_properties.yaml"', 'CPUSET="--cpuset 1-7,9-15 "']
         }
 
         result = process.run('cat /etc/scylla.d/io.conf |grep -v \#',
