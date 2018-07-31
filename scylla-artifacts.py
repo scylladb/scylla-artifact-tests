@@ -780,11 +780,7 @@ class ScyllaArtifactSanity(Test):
         self.srv_manager.wait_services_up()
         # check restart
         if self.uuid:
-            ret = self.cvdb.check_new_record_v2("select * from housekeeping.checkversion where ruid='{}' and repoid='{}' and version like '{}%' and statuscode='r'".format(self.uuid, self.repoid, version), last_id)
-            if 'jessie.list' in self.sw_repo:
-                self.log.debug("workaround: don't asssert query result: %s" % ret)
-            else:
-                assert ret
+            assert self.cvdb.check_new_record_v2("select * from housekeeping.checkversion where ruid='{}' and repoid='{}' and version like '{}%' and statuscode='r'".format(self.uuid, self.repoid, version), last_id)
         self.run_nodetool()
         self.run_cassandra_stress()
 
