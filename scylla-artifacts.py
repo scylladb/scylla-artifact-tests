@@ -342,14 +342,11 @@ class ScyllaInstallGeneric(object):
         # check setup
         if self.uuid:
             version = self.version.replace('scylladb-', '')
-            # fixme: current repoid and ruid aren't filled correctly by housekeeping backend
-            # last_id = self.cvdb.get_last_id_v2("select * from housekeeping.checkversion where repoid='{}' and ruid='{}' and version like '{}%' and statuscode='i'".format(self.repoid, self.uuid, version))
-            last_id = self.cvdb.get_last_id_v2("select * from housekeeping.checkversion where version like '{}%' and statuscode='i'".format(version))
+            last_id = self.cvdb.get_last_id_v2("select * from housekeeping.checkversion where repoid='{}' and ruid='{}' and version like '{}%' and statuscode='i'".format(self.repoid, self.uuid, version))
         process.run(setup_cmd, shell=True, verbose=True, timeout=600)
         # check setup
         if self.uuid:
-            # fixme: strict check with repoid, ruid
-            assert self.cvdb.check_new_record_v2("select * from housekeeping.checkversion where version like '{}%' and statuscode='i'".format(version), last_id)
+            assert self.cvdb.check_new_record_v2("select * from housekeeping.checkversion where repoid='{}' and ruid='{}' and version like '{}%' and statuscode='i'".format(self.repoid, self.uuid, version), last_id)
 
         self.srv_manager.start_services()
         self.srv_manager.wait_services_up()
@@ -778,15 +775,12 @@ class ScyllaArtifactSanity(Test):
         # check restart
         if self.uuid:
             version = self.version.replace('scylladb-', '')
-            # fixme: current repoid and ruid aren't filled correctly by housekeeping backend (except centos)
-            # last_id = self.cvdb.get_last_id_v2("select * from housekeeping.checkversion where ruid='{}' and repoid='{}' and version like '{}%' and statuscode='r'".format(self.uuid, self.repoid, version))
-            last_id = self.cvdb.get_last_id_v2("select * from housekeeping.checkversion where version like '{}%' and statuscode='r'".format(version))
+            last_id = self.cvdb.get_last_id_v2("select * from housekeeping.checkversion where ruid='{}' and repoid='{}' and version like '{}%' and statuscode='r'".format(self.uuid, self.repoid, version))
         self.srv_manager.restart_services()
         self.srv_manager.wait_services_up()
         # check restart
         if self.uuid:
-            #assert self.cvdb.check_new_record_v2("select * from housekeeping.checkversion where ruid='{}' and repoid='{}' and version like '{}%' and statuscode='r'".format(self.uuid, self.repoid, version), last_id)
-            ret = self.cvdb.check_new_record_v2("select * from housekeeping.checkversion where version like '{}%' and statuscode='r'".format(version), last_id)
+            ret = self.cvdb.check_new_record_v2("select * from housekeeping.checkversion where ruid='{}' and repoid='{}' and version like '{}%' and statuscode='r'".format(self.uuid, self.repoid, version), last_id)
             if 'jessie.list' in self.sw_repo:
                 self.log.debug("workaround: don't asssert query result: %s" % ret)
             else:
