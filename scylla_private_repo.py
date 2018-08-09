@@ -15,45 +15,12 @@ import logging
 import tempfile
 import json
 import re
-import MySQLdb
 
 from avocado import Test
 from avocado.utils import process
 from avocado import main
 
-
-class CheckVersionDB(object):
-    def __init__(self, host, user, passwd):
-        self.host = host
-        self.user = user
-        self.passwd = passwd
-        self.db_name = 'housekeeping'
-        self.connect()
-        self.log = logging.getLogger('scylla_private_repo')
-
-    def connect(self):
-        self.db = MySQLdb.connect(host=self.host,
-                                  user=self.user,
-                                  passwd=self.passwd,
-                                  db=self.db_name)
-        self.cursor = self.db.cursor()
-
-    def close(self):
-        self.db.close()
-
-    def reconnect(self):
-        self.close()
-        self.connect()
-
-    def commit(self):
-        self.db.commit()
-
-    def execute(self, sql, verbose=True):
-        self.log.debug('SQL: {}'.format(sql))
-        self.cursor.execute(sql)
-        ret = self.cursor.fetchall()
-        self.log.debug('RET: {}'.format(ret))
-        return ret
+from check_version import CheckVersionDB
 
 
 class PrivateRepo(object):

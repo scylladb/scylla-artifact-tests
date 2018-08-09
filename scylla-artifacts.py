@@ -5,6 +5,11 @@ import re
 import logging
 import threading
 from pkg_resources import parse_version
+try:
+    from check_version import CheckVersionDB
+except:
+    # Avocado may not copy check_version.py to VM
+    print "failed to import CheckVersionDB"
 
 from avocado import Test
 from avocado import main
@@ -183,9 +188,12 @@ class InstallPackageError(Exception):
 def get_scylla_logs():
     try:
         journalctl_cmd = path.find_command('journalctl')
-        process.run('sudo %s -f '
+        process.run('sudo %s -f --no-tail '
                     '-u scylla-io-setup.service '
                     '-u scylla-server.service '
+                    '-u scylla-ami-setup.service '
+                    '-u scylla-housekeeping-daily.service '
+                    '-u scylla-housekeeping-restart.service '
                     '-u scylla-jmx.service' % journalctl_cmd,
                     verbose=True, ignore_status=True)
     except path.CmdNotFoundError:
@@ -274,6 +282,8 @@ class ScyllaInstallGeneric(object):
         wait.wait_for(lambda: os.path.exists(uuid_path), timeout=30, step=5,
                       text='Waiting for housekeeping.uuid generated')
 
+        assert os.path.exists(uuid_path), "housekeeping.uuid doesn't exist"
+
         if os.path.exists(uuid_path) and not os.path.exists(mark_path):
             with open(uuid_path) as uuid_file:
                 uuid = uuid_file.read().strip()
@@ -281,16 +291,31 @@ class ScyllaInstallGeneric(object):
             process.run(cmd % uuid, shell=True, verbose=True)
             process.run('sudo -u scylla touch %s' % mark_path, verbose=True)
 
+    def download_scylla_repo(self):
+        if self.uuid:
+            last_id = self.cvdb.get_last_id(self.uuid, self.repoid, self.version)
+        process.run('sudo curl %s -o %s -L' % (self.sw_repo_src, self.sw_repo_dst),
+                    shell=True)
+        if self.uuid:
+            assert self.cvdb.check_new_record(self.uuid, self.repoid, self.version, last_id)
+
     def run(self):
         wait.wait_for(self.sw_manager.upgrade, timeout=300, step=30,
                       text="Wait until system is up to date...")
         # setup software repo and other environment before install test packages
         pkgs = self.env_setup()
+        # check install
+        if self.uuid:
+            version = self.version.replace('scylladb-', '')
+            last_id = self.cvdb.get_last_id(self.uuid, self.repoid, self.version, table='housekeeping.repodownload', add_filter="and file_name like 'scylla%server%{}%'".format(version))
         for pkg in pkgs:
             if not self.sw_manager.install(pkg):
                 e_msg = ('Package %s could not be installed '
                          '(see logs for details)' % os.path.basename(pkg))
                 raise InstallPackageError(e_msg)
+        # check install
+        if self.uuid:
+            assert self.cvdb.check_new_record(self.uuid, self.repoid, self.version, last_id, table='housekeeping.repodownload', add_filter="and file_name like 'scylla%server%{}%'".format(version))
 
         # enable raid setup when second disk exists
         setup_cmd = 'sudo /usr/lib/scylla/scylla_setup --nic eth0'
@@ -311,7 +336,17 @@ class ScyllaInstallGeneric(object):
             script_content = f.read()
         if '--no-cpuscaling-setup' in script_content:
             setup_cmd += ' --no-cpuscaling-setup'
+        # check setup
+        if self.uuid:
+            version = self.version.replace('scylladb-', '')
+            # fixme: current repoid and ruid aren't filled correctly by housekeeping backend
+            # last_id = self.cvdb.get_last_id_v2("select * from housekeeping.checkversion where repoid='{}' and ruid='{}' and version like '{}%' and statuscode='i'".format(self.repoid, self.uuid, version))
+            last_id = self.cvdb.get_last_id_v2("select * from housekeeping.checkversion where version like '{}%' and statuscode='i'".format(version))
         process.run(setup_cmd, shell=True)
+        # check setup
+        if self.uuid:
+            # fixme: strict check with repoid, ruid
+            assert self.cvdb.check_new_record_v2("select * from housekeeping.checkversion where version like '{}%' and statuscode='i'".format(version), last_id)
 
         self.srv_manager.start_services()
         self.srv_manager.wait_services_up()
@@ -320,6 +355,7 @@ class ScyllaInstallGeneric(object):
         # verify SELinux setup on Red Hat variants
         detected_distro = distro.detect()
         distro_name = detected_distro.name.lower()
+        distro_version = detected_distro.version
         is_debian_variant = 'ubuntu' in distro_name or 'debian' in distro_name
         if not is_debian_variant:
             result = process.run('getenforce')
@@ -341,6 +377,9 @@ class ScyllaInstallGeneric(object):
             if devlist:
                 coredump_err = "Coredump directory isn't pointed to raid disk"
                 assert os.path.realpath('/var/lib/systemd/coredump') == '/var/lib/scylla/coredump', coredump_err
+        elif distro_name == 'debian' and distro_version == '9':
+            result = process.run('sysctl kernel.core_pattern')
+            assert 'systemd-coredump' in result.stdout
         else:
             result = process.run('sysctl kernel.core_pattern')
             assert 'scylla_save_coredump' in result.stdout
@@ -394,8 +433,7 @@ class ScyllaInstallUbuntu1404(ScyllaInstallDebian):
         process.run('sudo add-apt-repository -y ppa:scylladb/ppa', shell=True)
 
     def env_setup(self):
-        process.run('sudo curl %s -o %s -L' % (self.sw_repo_src, self.sw_repo_dst),
-                    shell=True)
+        self.download_scylla_repo()
         self.prepare_extend_repo()
         process.run('sudo apt-get update')
         self.install_java18()
@@ -411,8 +449,7 @@ class ScyllaInstallUbuntu1604(ScyllaInstallDebian):
         process.run("sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 17723034C56D4B19")
 
     def env_setup(self):
-        process.run('sudo curl %s -o %s -L' % (self.sw_repo_src, self.sw_repo_dst),
-                    shell=True)
+        self.download_scylla_repo()
         self.prepare_extend_repo()
         process.run('sudo apt-get update')
         self.sw_manager.upgrade()
@@ -428,8 +465,7 @@ class ScyllaInstallDebian8(ScyllaInstallDebian):
         process.run("echo 'deb http://download.opensuse.org/repositories/home:/scylladb:/scylla-3rdparty-jessie/Debian_8.0/ /' > /etc/apt/sources.list.d/scylla-3rdparty.list", shell=True)
 
     def env_setup(self):
-        process.run('sudo curl %s -o %s -L' % (self.sw_repo_src, self.sw_repo_dst),
-                    shell=True)
+        self.download_scylla_repo()
         self.prepare_extend_repo()
         process.run('sudo apt-get update')
         self.install_java18(args=' -t jessie-backports')
@@ -439,11 +475,13 @@ class ScyllaInstallDebian8(ScyllaInstallDebian):
 
 class ScyllaInstallDebian9(ScyllaInstallDebian):
     def prepare_extend_repo(self):
-        pass
+        process.run("apt-get install gnupg1-curl dirmngr -y")
+        process.run("apt-key adv --fetch-keys https://download.opensuse.org/repositories/home:/scylladb:/scylla-3rdparty-stretch/Debian_9.0/Release.key")
+        process.run("sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 17723034C56D4B19")
+        process.run("echo 'deb http://download.opensuse.org/repositories/home:/scylladb:/scylla-3rdparty-stretch/Debian_9.0/ /' > /etc/apt/sources.list.d/scylla-3rdparty.list")
 
     def env_setup(self):
-        process.run('sudo curl %s -o %s -L' % (self.sw_repo_src, self.sw_repo_dst),
-                    shell=True)
+        self.download_scylla_repo()
         self.prepare_extend_repo()
         process.run('sudo apt-get update')
         self.sw_manager.upgrade()
@@ -460,8 +498,7 @@ class ScyllaInstallFedora(ScyllaInstallGeneric):
 class ScyllaInstallFedora22(ScyllaInstallFedora):
 
     def env_setup(self):
-        process.run('sudo curl %s -o %s -L' % (self.sw_repo_src, self.sw_repo_dst),
-                    shell=True)
+        self.download_scylla_repo()
         self.sw_manager.upgrade()
         return ['scylla']
 
@@ -491,8 +528,7 @@ class ScyllaInstallCentOS7(ScyllaInstallCentOS):
 
     def env_setup(self):
         self._centos_remove_system_packages()
-        process.run('sudo curl %s -o %s -L' % (self.sw_repo_src, self.sw_repo_dst),
-                    shell=True)
+        self.download_scylla_repo()
         self.sw_manager.upgrade()
         return [self.scylla_pkg()]
 
@@ -599,6 +635,10 @@ class ScyllaArtifactSanity(Test):
     """
     setup_done_file = None
     srv_manager = ScyllaServiceManager()
+    cvdb = None
+    uuid = None
+    repoid = None
+    version = None
 
     def get_setup_file_done(self):
         tmpdir = os.path.dirname(self.workdir)
@@ -655,10 +695,24 @@ class ScyllaArtifactSanity(Test):
         else:
             self.skip('Unsupported OS: %s' % detected_distro)
 
+        installer.cvdb = self.cvdb
+        installer.uuid = self.uuid
+        installer.repoid = self.repoid
+        installer.version = self.version
+
         installer.run()
         os.mknod(self.get_setup_file_done())
 
     def setUp(self):
+        if self.params.get('host') and self.params.get('user') and self.params.get('passwd'):
+            self.cvdb = CheckVersionDB(self.params.get('host'),
+                                       self.params.get('user'),
+                                       self.params.get('passwd'))
+        sw_repo = self.params.get('sw_repo', default='')
+        priv_repo_flag = re.findall("https://repositories.scylladb.com/scylla/repo/(.*scylladb-[\d\.]+).*\.\w+", sw_repo)
+        if priv_repo_flag:
+            self.uuid, self.repoid, self.version = priv_repo_flag[0].split('/')
+            assert self.cvdb, 'check version db must be connected for private repo'
         if not os.path.isfile(self.get_setup_file_done()):
             self.scylla_setup()
 
@@ -700,8 +754,15 @@ class ScyllaArtifactSanity(Test):
         self.run_cassandra_stress()
 
     def test_after_restart(self):
+        # check restart
+        if self.uuid:
+            version = self.version.replace('scylladb-', '')
+            last_id = self.cvdb.get_last_id_v2("select * from housekeeping.checkversion where ruid='{}' and repoid='{}' and version like '{}%' and statuscode='r'".format(self.uuid, self.repoid, version))
         self.srv_manager.restart_services()
         self.srv_manager.wait_services_up()
+        # check restart
+        if self.uuid:
+            assert self.cvdb.check_new_record_v2("select * from housekeeping.checkversion where ruid='{}' and repoid='{}' and version like '{}%' and statuscode='r'".format(self.uuid, self.repoid, version), last_id)
         self.run_nodetool()
         self.run_cassandra_stress()
 
