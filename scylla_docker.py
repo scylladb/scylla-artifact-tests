@@ -178,7 +178,7 @@ class ScyllaDockerSanity(Test):
         self.image = self.params.get('docker_image', default='scylladb/scylla-nightly')
         self.docker = None
         self.node_cnt = 2
-        self.op_cnt = 100000
+        self.op_cnt = 300000
 
     def _cleanup(self):
         log.debug('cleanup cluster if exists')
@@ -211,10 +211,11 @@ class ScyllaDockerSanity(Test):
         """
         res = self.docker.run_nodetool('status')
         log.debug(res)
-        res = self.docker.run_stress_test('write', 'n={}'.format(self.op_cnt))
+        res = self.docker.run_stress_test('write', 'cl=QUORUM n={} -schema replication(factor={}) -rate threads=10'
+                                          .format(self.op_cnt, self.node_cnt))
         self.assertGreaterEqual(res['Total partitions'], self.op_cnt)
         self.assertEquals(int(res['Total errors']), 0)
-        res = self.docker.run_stress_test('read', 'n={} -rate threads=32'.format(self.op_cnt))
+        res = self.docker.run_stress_test('read', 'cl=QUORUM n={} -rate threads=10'.format(self.op_cnt))
         self.assertGreaterEqual(res['Total partitions'], self.op_cnt)
         self.assertEquals(int(res['Total errors']), 0)
 
@@ -222,14 +223,16 @@ class ScyllaDockerSanity(Test):
         """
         Run cassandra stress write, restart cluster, run stress read
         """
-        res = self.docker.run_stress_test('write', 'n={}'.format(self.op_cnt))
+        res = self.docker.run_stress_test('write', 'cl=QUORUM n={} -schema replication(factor={}) -rate threads=10'
+                                          .format(self.op_cnt, self.node_cnt))
         self.assertGreaterEqual(res['Total partitions'], self.op_cnt)
         self.assertEquals(int(res['Total errors']), 0)
         self.docker.stop_cluster()
         self.docker.start_cluster()
         if not self.docker.wait_for_cluster_up():
             raise Exception('Failed to start cluster: timeout expired.')
-        res = self.docker.run_stress_test('read', 'n={} -rate threads=32'.format(self.op_cnt))
+        time.sleep(10)
+        res = self.docker.run_stress_test('read', 'n={} -rate threads=10'.format(self.op_cnt))
         self.assertGreaterEqual(res['Total partitions'], self.op_cnt)
         self.assertEquals(int(res['Total errors']), 0)
 
