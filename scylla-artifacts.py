@@ -199,7 +199,7 @@ def get_scylla_logs():
                     verbose=True, ignore_status=True)
     except path.CmdNotFoundError:
         process.run('tail -f /var/log/syslog | grep scylla', shell=True,
-                    ignore_status=True)
+                    verbose=True, ignore_status=True)
 
 
 class ScyllaServiceManager(object):
