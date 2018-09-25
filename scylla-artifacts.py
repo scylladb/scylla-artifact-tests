@@ -4,6 +4,7 @@ import os
 import re
 import logging
 import threading
+import datetime
 from pkg_resources import parse_version
 try:
     from check_version import CheckVersionDB
@@ -198,16 +199,37 @@ def get_scylla_logs():
                     verbose=True, ignore_status=True)
     except path.CmdNotFoundError:
         process.run('tail -f /var/log/syslog | grep scylla', shell=True,
-                    ignore_status=True)
+                    verbose=True, ignore_status=True)
 
 
 class ScyllaServiceManager(object):
 
     def __init__(self):
         self.services = ['scylla-server', 'scylla-jmx']
+        self.start_time = None
 
     def _scylla_service_is_up(self):
         srv_manager = service.ServiceManager()
+        try:
+            journalctl_cmd = path.find_command('journalctl')
+            timestamp = '--since %s' % self.start_time if self.start_time else ''
+            result = process.run('sudo %s --no-tail '
+                                 '-u scylla-io-setup.service '
+                                 '-u scylla-server.service '
+                                 '-u scylla-ami-setup.service '
+                                 '-u scylla-housekeeping-daily.service '
+                                 '-u scylla-housekeeping-restart.service '
+                                 '-u scylla-jmx.service '
+                                 '%s' % (journalctl_cmd, timestamp),
+                                 ignore_status=True)
+        except path.CmdNotFoundError:
+            result = process.run('cat /var/log/syslog | grep scylla', shell=True,
+                                 ignore_status=True)
+        error_list = ['I/O Scheduler is not properly configured!', 'Failed to start Scylla Server']
+        for err in error_list:
+            if err in result.stdout:
+                raise StartServiceError('Fail to start scylla-server, err: %s' % err)
+
         for srv in self.services:
             srv_manager.status(srv)
         return not network.is_port_free(9042, 'localhost')
@@ -221,6 +243,7 @@ class ScyllaServiceManager(object):
             raise StartServiceError(e_msg)
 
     def start_services(self):
+        self.start_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         srv_manager = service.ServiceManager()
         for srv in self.services:
             srv_manager.start(srv)
@@ -245,6 +268,7 @@ class ScyllaServiceManager(object):
                 raise StopServiceError(e_msg)
 
     def restart_services(self):
+        self.start_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         srv_manager = service.ServiceManager()
         for srv in self.services:
             srv_manager.restart(srv)
