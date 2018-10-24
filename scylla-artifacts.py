@@ -488,6 +488,7 @@ class ScyllaInstallUbuntu1804(ScyllaInstallDebian):
         self.download_scylla_repo()
         self.prepare_extend_repo()
         process.run('sudo apt-get update')
+        self.install_java18()
         self.sw_manager.upgrade()
         return [self.scylla_pkg()]
 
