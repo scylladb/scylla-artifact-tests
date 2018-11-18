@@ -49,7 +49,7 @@ class ScyllaDocker(object):
 
     def update_image(self):
         log.debug('update scylla image')
-        self._cmd('pull {}'.format(self._image), timeout=90)
+        self._cmd('pull {}'.format(self._image), timeout=600)
         self.clean_old_images()
 
     def get_node_ip(self, node_name):
