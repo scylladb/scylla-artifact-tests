@@ -28,6 +28,7 @@ class ScyllaDocker(object):
         self._node_cnt = kwargs.get('node_cnt', 1)
         self._seed_name = 'node1'
         self._nodes = list()
+        self._start_timeout = kwargs.get('start_timeout', 30)
 
     @property
     def nodes(self):
@@ -96,7 +97,7 @@ class ScyllaDocker(object):
         node_ips = [self.get_node_ip(name) for name in self.nodes]
         up_nodes = list()
         try_cnt = 0
-        while len(up_nodes) < len(node_ips) and try_cnt < 30:
+        while len(up_nodes) < len(node_ips) and try_cnt < self._start_timeout:
             try:
                 res = self.run_nodetool('status')
                 for line in res.splitlines():
@@ -179,6 +180,7 @@ class ScyllaDockerSanity(Test):
         self.docker = None
         self.node_cnt = 2
         self.op_cnt = 300000
+        self.start_timeout = self.params.get('start_timeout', default=30)
 
     def _cleanup(self):
         log.debug('cleanup cluster if exists')
@@ -194,9 +196,10 @@ class ScyllaDockerSanity(Test):
         """
         Update scylla image, create cluster(cleanup if exists)
         """
-        self.docker = ScyllaDocker(image=self.image, node_cnt=self.node_cnt)
+        self.docker = ScyllaDocker(image=self.image, node_cnt=self.node_cnt, start_timeout=self.start_timeout)
         self.docker.update_image()
         self._cleanup()
+        log.debug('Wait cluster timeup: {} seconds'.format(self.start_timeout))
         self.docker.create_cluster()
 
     def tearDown(self):
