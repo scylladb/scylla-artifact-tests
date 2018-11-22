@@ -1,3 +1,4 @@
 # Docker
 docker_image: scylladb/scylla-nightly:latest
 node_cnt: 2
+start_timeout: 30
