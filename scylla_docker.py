@@ -46,7 +46,8 @@ class ScyllaDocker(object):
     def clean_old_images(self):
         images = self._cmd('images -f "dangling=true" -q')
         if images:
-            self._cmd('rmi {}'.format(images), timeout=90)
+            images_str = ' '.join(images.split())
+            self._cmd('rmi "{}"'.format(images_str), timeout=90)
 
     def update_image(self):
         log.debug('update scylla image')
@@ -90,6 +91,7 @@ class ScyllaDocker(object):
             time.sleep(2)
             try_cnt += 1
         if not self.wait_for_cluster_up():
+            self.destroy_cluster()
             raise Exception('Failed to start cluster: timeout expired.')
         return self.nodes
 
