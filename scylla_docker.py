@@ -91,6 +91,7 @@ class ScyllaDocker(object):
             time.sleep(2)
             try_cnt += 1
         if not self.wait_for_cluster_up():
+            self.destroy_cluster()
             raise Exception('Failed to start cluster: timeout expired.')
         return self.nodes
 
