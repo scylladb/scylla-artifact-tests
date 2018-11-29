@@ -161,7 +161,7 @@ class ScyllaDocker(object):
                 try:
                     res = line.split(':')
                     key = res[0].strip()
-                    val = res[1].split()[0].strip() if key != 'Total operation time' else\
+                    val = res[1].split()[0].strip().replace(',', '') if key != 'Total operation time' else\
                         ':'.join([res[1], res[2], res[3]]).strip()
                     results[key] = float(val) if val != 'NaN' and key != 'Total operation time' else val
                 except Exception as ex:
