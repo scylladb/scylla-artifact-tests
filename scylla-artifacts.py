@@ -212,7 +212,7 @@ class ScyllaServiceManager(object):
         srv_manager = service.ServiceManager()
         try:
             journalctl_cmd = path.find_command('journalctl')
-            timestamp = '--since %s' % self.start_time if self.start_time else ''
+            timestamp = '--since "%s"' % self.start_time if self.start_time else ''
             result = process.run('sudo %s --no-tail '
                                  '-u scylla-io-setup.service '
                                  '-u scylla-server.service '
