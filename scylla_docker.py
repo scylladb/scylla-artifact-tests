@@ -45,9 +45,8 @@ class ScyllaDocker(object):
 
     def clean_old_images(self):
         images = self._cmd('images -f "dangling=true" -q')
-        if images:
-            images_str = ' '.join(images.split())
-            self._cmd('rmi {}'.format(images_str), timeout=90)
+        for img in images.split():
+            self._cmd('rmi {}'.format(img), timeout=90)
 
     def update_image(self):
         log.debug('update scylla image')
