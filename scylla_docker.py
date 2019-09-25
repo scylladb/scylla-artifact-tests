@@ -92,6 +92,8 @@ class ScyllaDocker(object):
         if not self.wait_for_cluster_up():
             self.destroy_cluster()
             raise Exception('Failed to start cluster: timeout expired.')
+        if not self.wait_for_cql_available():
+            raise Exception('Failed to start cluster: timeout expired.')
         return self.nodes
 
     def wait_for_cluster_up(self):
@@ -111,6 +113,22 @@ class ScyllaDocker(object):
             time.sleep(2)
             try_cnt += 1
         return len(up_nodes) == len(node_ips)
+
+    def wait_for_cql_available(self):
+        try_cnt = 0
+        output = ''
+        while try_cnt < self._start_timeout:
+            try:
+                output = self._cmd('exec {} cqlsh -e help'.format(self._seed_name))
+                log.debug(output)
+                if 'CQL help topics' in output:
+                    break
+            except Exception as ex:
+                log.debug(ex)
+                pass
+            time.sleep(1)
+            try_cnt += 1
+        return 'CQL help topics' in output
 
     def stop_cluster(self, system=False):
         log.debug('stop cluster')
@@ -235,7 +253,8 @@ class ScyllaDockerSanity(Test):
         self.docker.start_cluster()
         if not self.docker.wait_for_cluster_up():
             raise Exception('Failed to start cluster: timeout expired.')
-        time.sleep(10)
+        if not self.docker.wait_for_cql_available():
+            raise Exception('Failed to start cluster: timeout expired.')
         res = self.docker.run_stress_test('read', 'n={} -rate threads=10'.format(self.op_cnt))
         self.assertGreaterEqual(res['Total partitions'], self.op_cnt)
         self.assertEquals(int(res['Total errors']), 0)
