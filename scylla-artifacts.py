@@ -418,12 +418,16 @@ class ScyllaInstallGeneric(object):
 
 class ScyllaInstallDebian(ScyllaInstallGeneric):
 
+    GPG_KEY = '5e08fbd8b5d6ec9c'
+
     def __init__(self, sw_repo):
         super(ScyllaInstallDebian, self).__init__(sw_repo)
         self.sw_repo_dst = '/etc/apt/sources.list.d/scylla.list'
 
     def prepare_extend_repo(self):
-        raise NotImplementedError
+        process.run('sudo apt-get install software-properties-common -y', shell=True)
+        process.run("sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys {}".format(self.GPG_KEY))
+        process.run('sudo add-apt-repository -y ppa:scylladb/ppa', shell=True)
 
     def install_java18(self, args=''):
         # fixme: update the version for enterprise in future when it requests java 1.8
@@ -448,10 +452,6 @@ class ScyllaInstallDebian(ScyllaInstallGeneric):
 
 
 class ScyllaInstallUbuntu1404(ScyllaInstallDebian):
-    def prepare_extend_repo(self):
-        process.run('sudo apt-get install software-properties-common -y', shell=True)
-        process.run('sudo add-apt-repository -y ppa:openjdk-r/ppa', shell=True)
-        process.run('sudo add-apt-repository -y ppa:scylladb/ppa', shell=True)
 
     def env_setup(self):
         self.download_scylla_repo()
@@ -463,11 +463,6 @@ class ScyllaInstallUbuntu1404(ScyllaInstallDebian):
 
 
 class ScyllaInstallUbuntu1604(ScyllaInstallDebian):
-    def prepare_extend_repo(self):
-        process.run('sudo apt-get install software-properties-common -y', shell=True)
-        process.run("sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 6B2BFD3660EF3F5B")
-        process.run("sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 17723034C56D4B19")
-        process.run('sudo add-apt-repository -y ppa:scylladb/ppa', shell=True)
 
     def env_setup(self):
         self.download_scylla_repo()
@@ -478,11 +473,6 @@ class ScyllaInstallUbuntu1604(ScyllaInstallDebian):
 
 
 class ScyllaInstallUbuntu1804(ScyllaInstallDebian):
-    def prepare_extend_repo(self):
-        process.run('sudo apt-get install software-properties-common -y', shell=True)
-        process.run("sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 6B2BFD3660EF3F5B")
-        process.run("sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 17723034C56D4B19")
-        process.run('sudo add-apt-repository -y ppa:scylladb/ppa', shell=True)
 
     def env_setup(self):
         self.download_scylla_repo()
@@ -502,7 +492,7 @@ class ScyllaInstallDebian8(ScyllaInstallDebian):
         process.run("echo 'Acquire::Check-Valid-Until \"false\";' > /etc/apt/apt.conf.d/99jessie-backports", shell=True)
         process.run("apt-get install gnupg-curl -y")
         process.run("apt-key adv --fetch-keys https://download.opensuse.org/repositories/home:/scylladb:/scylla-3rdparty-jessie/Debian_8.0/Release.key")
-        process.run("sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 17723034C56D4B19")
+        process.run("sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys {}".format(self.GPG_KEY))
         process.run("echo 'deb http://download.opensuse.org/repositories/home:/scylladb:/scylla-3rdparty-jessie/Debian_8.0/ /' > /etc/apt/sources.list.d/scylla-3rdparty.list", shell=True)
 
     def env_setup(self):
@@ -518,7 +508,7 @@ class ScyllaInstallDebian9(ScyllaInstallDebian):
     def prepare_extend_repo(self):
         process.run("apt-get install gnupg1-curl dirmngr -y")
         process.run("apt-key adv --fetch-keys https://download.opensuse.org/repositories/home:/scylladb:/scylla-3rdparty-stretch/Debian_9.0/Release.key")
-        process.run("sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 17723034C56D4B19")
+        process.run("sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys {}".format(self.GPG_KEY))
         process.run("echo 'deb http://download.opensuse.org/repositories/home:/scylladb:/scylla-3rdparty-stretch/Debian_9.0/ /' > /etc/apt/sources.list.d/scylla-3rdparty.list")
 
     def env_setup(self):
@@ -533,7 +523,7 @@ class ScyllaInstallDebian10(ScyllaInstallDebian):
     def prepare_extend_repo(self):
         process.run("apt-get install gnupg1-curl dirmngr -y")
         process.run("apt-key adv --fetch-keys https://download.opensuse.org/repositories/home:/scylladb:/scylla-3rdparty-buster/Debian_10.0/Release.key")
-        process.run("sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 17723034C56D4B19")
+        process.run("sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys {}".format(self.GPG_KEY))
         process.run("echo 'deb http://download.opensuse.org/repositories/home:/scylladb:/scylla-3rdparty-buster/Debian_10.0/ /' > /etc/apt/sources.list.d/scylla-3rdparty.list")
 
     def env_setup(self):
